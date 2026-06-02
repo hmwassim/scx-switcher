@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=DebForge SCX
+Comment=Manage sched-ext CPU schedulers
+Exec=debforge-scx
+Icon=debforge-scx
+Terminal=false
+Type=Application
+Categories=System;Utility;
+Keywords=scheduler;scx;sched-ext;cpu;

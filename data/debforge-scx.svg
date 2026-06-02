@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" version="1.1">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4a90d9"/>
+      <stop offset="100%" stop-color="#2563a8"/>
+    </linearGradient>
+    <linearGradient id="die" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5ba3e6"/>
+      <stop offset="100%" stop-color="#3b82c4"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#93c5fd"/>
+      <stop offset="100%" stop-color="#60a5fa"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Shadow -->
+  <rect width="40" height="40" x="4" y="5" rx="10" ry="10" fill="#000000" opacity="0.25"/>
+
+  <!-- Base chip -->
+  <rect width="40" height="40" x="4" y="4" rx="10" ry="10" fill="url(#bg)"/>
+
+  <!-- Inner glow / highlight -->
+  <rect width="40" height="40" x="4" y="4" rx="10" ry="10" fill="none" stroke="#8bb8f0" stroke-width="0.5" opacity="0.4"/>
+
+  <!-- CPU die -->
+  <rect width="24" height="24" x="12" y="12" rx="3" ry="3" fill="url(#die)" stroke="#1e4d8c" stroke-width="0.5"/>
+
+  <!-- Die inner detail -->
+  <rect width="16" height="16" x="16" y="16" rx="2" ry="2" fill="#1e4d8c" opacity="0.3"/>
+
+  <!-- Core -->
+  <rect width="8" height="8" x="20" y="20" rx="1.5" ry="1.5" fill="url(#core)" stroke="#1e4d8c" stroke-width="0.5"/>
+
+  <!-- Pins top -->
+  <rect width="2.5" height="2.5" x="15.5" y="8" rx="0.8" ry="0.8" fill="#93c5fd"/>
+  <rect width="2.5" height="2.5" x="22.5" y="8" rx="0.8" ry="0.8" fill="#93c5fd"/>
+  <rect width="2.5" height="2.5" x="29.5" y="8" rx="0.8" ry="0.8" fill="#93c5fd"/>
+
+  <!-- Pins bottom -->
+  <rect width="2.5" height="2.5" x="15.5" y="37" rx="0.8" ry="0.8" fill="#93c5fd"/>
+  <rect width="2.5" height="2.5" x="22.5" y="37" rx="0.8" ry="0.8" fill="#93c5fd"/>
+  <rect width="2.5" height="2.5" x="29.5" y="37" rx="0.8" ry="0.8" fill="#93c5fd"/>
+
+  <!-- Pins left -->
+  <rect width="2.5" height="2.5" x="8" y="15.5" rx="0.8" ry="0.8" fill="#93c5fd"/>
+  <rect width="2.5" height="2.5" x="8" y="22.5" rx="0.8" ry="0.8" fill="#93c5fd"/>
+  <rect width="2.5" height="2.5" x="8" y="29.5" rx="0.8" ry="0.8" fill="#93c5fd"/>
+
+  <!-- Pins right -->
+  <rect width="2.5" height="2.5" x="37" y="15.5" rx="0.8" ry="0.8" fill="#93c5fd"/>
+  <rect width="2.5" height="2.5" x="37" y="22.5" rx="0.8" ry="0.8" fill="#93c5fd"/>
+  <rect width="2.5" height="2.5" x="37" y="29.5" rx="0.8" ry="0.8" fill="#93c5fd"/>
+</svg>
