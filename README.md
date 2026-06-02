@@ -1,51 +1,64 @@
-# debforge-scx
+# DebForge SCX
 
-A Qt6 GUI for installing and managing sched-ext (SCX) BPF CPU schedulers on Debian 13+ (Trixie).
+Qt6 GUI for installing and managing sched-ext BPF CPU schedulers on **Debian 13+ (Trixie)**.
 
 ## Prerequisites
 
-- **Debian 13+ (Trixie)** — not tested on other distros
-- **Kernel 6.12+** with sched-ext support (`/sys/kernel/sched_ext` must exist)
+- Debian 13 (Trixie) or newer
+- Kernel 6.12+ with sched-ext support (`/sys/kernel/sched_ext` exists)
+- For backported kernels, matching `linux-headers-$(uname -r)` should be available
 
 ## Quick Start
 
-```bash
-git clone https://github.com/hmwassim/debforge-scx.git
-cd debforge-scx
+```sh
+# 1. Install everything (schedulers, loader, GUI)
 ./install.sh
-# Reboot, then:
+
+# 2. Reboot (or: sudo systemctl start scx_loader.service)
+
+# 3. Launch the GUI
 debforge-scx
 ```
 
 ## Scripts
 
-| Script | Description |
-|--------|-------------|
-| `install.sh` | Full unattended installation (kernel check, deps, Rust, schedulers, loader, GUI) |
-| `update.sh`  | Incremental update (rebuild schedulers, loader, GUI) |
-| `uninstall.sh` | Interactive removal of all installed components |
-| `build.sh`   | Quick GUI-only build (for development) |
+| Script | Purpose |
+|--------|---------|
+| `install.sh` | Full install: deps, Rust, scx schedulers, scx-loader/scxctl, GUI |
+| `update.sh` | Rebuild & reinstall schedulers, loader, and GUI |
+| `uninstall.sh` | Complete removal of all components |
+| `build.sh` | Build just the GUI (requires existing scxctl) |
 
 ### install.sh options
 
 ```
---resume            Resume a previous interrupted install
---skip-schedulers   Skip building and installing scx schedulers
---skip-loader       Skip building scx-loader and scxctl
---skip-gui          Skip building the GUI
+--resume             Skip previously completed steps (safe to re-run after failure)
+--skip-schedulers    Skip building scx schedulers
+--skip-loader        Skip building scx-loader
+--skip-gui           Skip building the GUI
 ```
 
-## Building a .deb package
+## Building the .deb package
 
-```bash
+```sh
+sudo apt install dpkg-dev debhelper cmake qt6-base-dev g++
 dpkg-buildpackage -us -uc
 ```
 
-## Architecture
+## Unprivileged vs Privileged operations
 
-- **debforge-scx** — Qt6 GUI binary (`/usr/bin/debforge-scx`)
-- **scxctl** — CLI wrapper for scheduler control (`/usr/bin/scxctl`, installed by install.sh)
-- **scx_loader** — systemd service for persistent scheduler at boot (`/usr/bin/scx_loader`, installed by install.sh)
-- **scx schedulers** — BPF schedulers built from `scx/` (installed by install.sh)
+- **scxctl list, scxctl get, systemctl is-enabled** run directly as your user
+- **Stopping, starting, switching schedulers** use `pkexec` with PolKit `auth_admin_keep` caching (password once per session)
+- The `com.debforge.scx.policy` action file in `/usr/share/polkit-1/actions/` enables credential caching
 
-Privileged operations (start/stop/switch schedulers, toggle service) use `pkexec` with PolKit caching (`auth_admin_keep`). Non-privileged operations (list, get status, systemctl read-only) run as the current user.
+## Files installed
+
+| Item | Location |
+|------|----------|
+| GUI binary | `/usr/bin/debforge-scx` |
+| scxctl | `/usr/bin/scxctl` |
+| scx_loader | `/usr/bin/scx_loader` |
+| Schedulers | `/usr/bin/scx_*` |
+| Config | `/etc/scx_loader/config.toml` |
+| User state | `~/.local/state/debforge-scx/state.json` |
+| PolKit action | `/usr/share/polkit-1/actions/com.debforge.scx.policy` |

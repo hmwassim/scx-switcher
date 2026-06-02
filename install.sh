@@ -102,6 +102,7 @@ else
     sudo apt update -qq || fail "apt update failed"
 
     KERNEL_VER=$(uname -r)
+    # Try exact kernel headers first, fall back to generic
     HEADER_PKG="linux-headers-${KERNEL_VER}"
     if ! apt-cache show "$HEADER_PKG" &>/dev/null; then
         info "Exact kernel headers package '$HEADER_PKG' not found, using linux-headers-amd64"
@@ -137,6 +138,7 @@ else
     ok
 fi
 
+# Ensure cargo in PATH
 if ! command -v cargo &>/dev/null && [ -f "$RBIN/cargo" ]; then
     export PATH="$RBIN:$PATH"
 fi

@@ -1,3 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cmake -B build && cmake --build build
+cd "$(dirname "$0")"
+
+echo "==> Configuring..."
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+echo "==> Building..."
+cmake --build build -j"$(nproc)"
+
+echo "==> Done. Binary: build/debforge-scx"
+echo "    Run: sudo cmake --install build"
