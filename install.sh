@@ -7,7 +7,8 @@ set -euo pipefail
 SCX_REPO="https://github.com/sched-ext/scx.git"
 LOADER_REPO="https://github.com/sched-ext/scx-loader.git"
 BUILD="/tmp/debforge-scx-build"
-RBIN="$HOME/.cargo/bin"
+export CARGO_HOME="$BUILD/cargo-home"
+export RUSTUP_HOME="$BUILD/rustup-home"
 LOG="/tmp/debforge-scx-install.log"
 STATE_DIR="/tmp/debforge-scx-state"
 STEP_FILE="$STATE_DIR/completed_steps"
@@ -112,7 +113,7 @@ if step_is_completed "deps" && $FLAG_RESUME; then
     skip "already installed"
 else
     info "Updating apt package index..."
-    sudo apt update -qq || fail "apt update failed"
+    sudo apt-get update || fail "apt update failed"
 
     KERNEL_VER=$(uname -r)
     # Try exact kernel headers first, fall back to generic
@@ -123,7 +124,7 @@ else
     fi
 
     info "Installing packages (including $HEADER_PKG)..."
-    sudo apt install -y -qq \
+    sudo apt-get install -y \
         git curl clang llvm libelf-dev libbpf-dev libzstd-dev \
         zlib1g-dev libseccomp-dev pkg-config build-essential bpftool \
         "$HEADER_PKG" qt6-base-dev libgl-dev polkitd \
@@ -133,29 +134,21 @@ else
     ok
 fi
 
-# ── Step 3: Install Rust ────────────────────────────────────────────────
-step 3 "Rust toolchain"
-if step_is_completed "rust" && $FLAG_RESUME; then
+# ── Step 3: Install Rust (sandboxed) ────────────────────────────────────
+step 3 "Rust toolchain (sandboxed)"
+if [ -f "$CARGO_HOME/bin/cargo" ] && $FLAG_RESUME && step_is_completed "rust"; then
     skip "already installed"
-elif command -v rustc &>/dev/null; then
-    info "Rust already installed ($(rustc --version))"
-    step_completed "rust"
-    ok
 else
-    info "Installing Rust via rustup..."
+    info "Installing Rust into sandbox ($CARGO_HOME)..."
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-        | sh -s -- -y || fail "rustup installation failed"
-    . "$HOME/.cargo/env"
+        | sh -s -- -y --no-modify-path || fail "rustup installation failed"
+    . "$CARGO_HOME/env"
     rustup default stable || fail "rustup default failed"
     step_completed "rust"
     ok
 fi
 
-# Ensure cargo in PATH
-if ! command -v cargo &>/dev/null && [ -f "$RBIN/cargo" ]; then
-    export PATH="$RBIN:$PATH"
-fi
-. "$HOME/.cargo/env" 2>/dev/null || true
+export PATH="$CARGO_HOME/bin:$PATH"
 
 export CC=clang CXX=clang++
 

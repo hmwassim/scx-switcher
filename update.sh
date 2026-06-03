@@ -4,6 +4,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD="/tmp/debforge-scx-update"
+export CARGO_HOME="$BUILD/cargo-home"
+export RUSTUP_HOME="$BUILD/rustup-home"
 LOG="/tmp/debforge-scx-update.log"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -22,6 +24,15 @@ log "=== debforge-scx update started ==="
 echo ""
 info "Updating DebForge SCX components..."
 echo ""
+
+# Bootstrap sandboxed Rust if not already present
+if [ ! -f "$CARGO_HOME/bin/cargo" ]; then
+    info "Installing Rust into sandbox ($CARGO_HOME)..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+    . "$CARGO_HOME/env"
+    rustup default stable
+fi
+export PATH="$CARGO_HOME/bin:$PATH"
 
 # Step 1: Update scx schedulers
 if command -v scxctl &>/dev/null; then
