@@ -1,4 +1,4 @@
-# DebForge SCX
+# SCX Switcher
 
 Qt6 GUI for installing and managing sched-ext BPF CPU schedulers on **Debian 13+ (Trixie)**.
 
@@ -17,7 +17,7 @@ Qt6 GUI for installing and managing sched-ext BPF CPU schedulers on **Debian 13+
 # 2. Reboot (or: sudo systemctl start scx_loader.service)
 
 # 3. Launch the GUI
-debforge-scx
+scx-switcher
 ```
 
 ## Scripts
@@ -49,16 +49,16 @@ dpkg-buildpackage -us -uc
 
 - **scxctl list, scxctl get, systemctl is-enabled** run directly as your user
 - **Stopping, starting, switching schedulers** use `pkexec` with PolKit `auth_admin_keep` caching (password once per session)
-- The `com.debforge.scx.policy` action file in `/usr/share/polkit-1/actions/` enables credential caching
+- The `com.scx-switcher.policy` action file in `/usr/share/polkit-1/actions/` enables credential caching
 
 ## Files installed
 
 | Item | Location |
 |------|----------|
-| GUI binary | `/usr/bin/debforge-scx` |
+| GUI binary | `/usr/bin/scx-switcher` |
 | scxctl | `/usr/bin/scxctl` |
 | scx_loader | `/usr/bin/scx_loader` |
 | Schedulers | `/usr/bin/scx_*` |
 | Config | `/etc/scx_loader/config.toml` |
-| User state | `~/.local/state/debforge-scx/state.json` |
-| PolKit action | `/usr/share/polkit-1/actions/com.debforge.scx.policy` |
+| User state | `~/.local/state/scx-switcher/state.json` |
+| PolKit action | `/usr/share/polkit-1/actions/com.scx-switcher.policy` |

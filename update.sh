@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# debforge-scx — Update schedulers, loader, and GUI
+# scx-switcher — Update schedulers, loader, and GUI
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BUILD="/tmp/debforge-scx-update"
-LOG="/tmp/debforge-scx-update.log"
+BUILD="/tmp/scx-switcher-update"
+LOG="/tmp/scx-switcher-update.log"
 
-VERSIONS_FILE="/var/lib/debforge-scx/versions"
+VERSIONS_FILE="/var/lib/scx-switcher/versions"
 SCX_REPO="https://github.com/sched-ext/scx.git"
 LOADER_REPO="https://github.com/sched-ext/scx-loader.git"
 
@@ -50,10 +50,10 @@ if [ "$(id -u)" -eq 0 ]; then
 fi
 
 exec > >(tee -a "$LOG") 2>&1
-log "=== debforge-scx update started ==="
+log "=== scx-switcher update started ==="
 
 echo ""
-info "Updating DebForge SCX components..."
+info "Updating SCX Switcher components..."
 echo ""
 
 # Bootstrap sandboxed Rust if not already present
@@ -110,7 +110,7 @@ if command -v scxctl &>/dev/null; then
 fi
 
 # Step 3: Rebuild GUI
-info "Rebuilding DebForge SCX GUI..."
+info "Rebuilding SCX Switcher GUI..."
 cd "$SCRIPT_DIR"
 rm -rf build
 cmake -B build -DCMAKE_BUILD_TYPE=Release || fail "cmake configure failed"
@@ -123,7 +123,7 @@ rm -rf "$BUILD"
 
 echo ""
 info "Update complete."
-info "Restart debforge-scx to apply GUI changes."
+info "Restart scx-switcher to apply GUI changes."
 echo ""
 
 log "=== update finished ==="

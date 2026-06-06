@@ -1,20 +1,20 @@
-Source: debforge-scx
+Source: scx-switcher
 Section: admin
 Priority: optional
-Maintainer: DebForge SCX <debforge-scx@local>
+Maintainer: SCX Switcher <scx-switcher@local>
 Build-Depends: debhelper-compat (= 13),
                cmake,
                qt6-base-dev,
                g++ (>= 12),
 Standards-Version: 4.7.0
 
-Package: debforge-scx
+Package: scx-switcher
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
          polkitd,
 Description: Qt6 GUI for managing sched-ext BPF schedulers on Debian 13+
- DebForge SCX is a Qt6 GUI that lets you install, switch, and monitor
+ SCX Switcher is a Qt6 GUI that lets you install, switch, and monitor
  sched-ext BPF CPU schedulers (scx_bpfland, scx_lavd, scx_rusty, ...).
  .
  The separate install.sh script handles the full build-from-source

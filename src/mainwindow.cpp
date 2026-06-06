@@ -18,7 +18,7 @@
 #include <QScrollArea>
 #include <QScrollBar>
 
-const QString MainWindow::APP_NAME = "DebForge SCX";
+const QString MainWindow::APP_NAME = "SCX Switcher";
 const QString MainWindow::APP_VERSION = "1.0.0";
 
 static QIcon makeDotIcon(const QColor &color) {
@@ -124,7 +124,7 @@ void MainWindow::buildSetupMode() {
     l->addWidget(msg);
 
     auto *hint = new QLabel(
-        "Run <b>./install.sh</b> in the debforge-scx directory<br>"
+        "Run <b>./install.sh</b> in the scx-switcher directory<br>"
         "to install schedulers and scxctl.");
     hint->setAlignment(Qt::AlignCenter);
     hint->setStyleSheet("color: #999;");

@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop">
-  <id>com.debforge.scx</id>
-  <name>DebForge SCX</name>
+  <id>com.scx-switcher</id>
+  <name>SCX Switcher</name>
   <summary>Qt6 GUI for managing sched-ext BPF CPU schedulers</summary>
   <description>
     <p>
-      DebForge SCX provides everything needed to install and manage
+      SCX Switcher provides everything needed to install and manage
       sched-ext BPF schedulers on Debian 13+ (Trixie).
     </p>
     <p>
@@ -19,8 +19,8 @@
       persistence, and browse a reference of all available schedulers.
     </p>
   </description>
-  <launchable type="desktop-id">debforge-scx.desktop</launchable>
-  <url type="homepage">https://github.com/yourorg/debforge-scx</url>
+  <launchable type="desktop-id">scx-switcher.desktop</launchable>
+  <url type="homepage">https://github.com/yourorg/scx-switcher</url>
   <screenshots>
     <screenshot type="default">
       <caption>Main window</caption>

@@ -75,7 +75,7 @@ void writeConfigToml(const QString &sched, const QString &mode) {
         "default_mode = \"%2\"\n"
     ).arg(sched, m);
 
-    QTemporaryFile tmp(QDir::tempPath() + "/debforge-scx-XXXXXX.toml");
+    QTemporaryFile tmp(QDir::tempPath() + "/scx-switcher-XXXXXX.toml");
     tmp.setAutoRemove(false);
     if (!tmp.open())
         return;

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# debforge-scx — Full installation of sched-ext schedulers + GUI
+# scx-switcher — Full installation of sched-ext schedulers + GUI
 # Usage: ./install.sh [--resume] [--skip-schedulers] [--skip-loader] [--skip-gui]
 set -euo pipefail
 
 # ── Config ──────────────────────────────────────────────────────────────
 SCX_REPO="https://github.com/sched-ext/scx.git"
 LOADER_REPO="https://github.com/sched-ext/scx-loader.git"
-BUILD="/tmp/debforge-scx-build"
+BUILD="/tmp/scx-switcher-build"
 
 # Use debforge's shared Rust sandbox if available, else local ephemeral one
 SHARED_CARGO="/opt/debforge/.cargo"
@@ -17,10 +17,10 @@ else
     export CARGO_HOME="$BUILD/cargo-home"
     export RUSTUP_HOME="$BUILD/rustup-home"
 fi
-LOG="/tmp/debforge-scx-install.log"
-STATE_DIR="/tmp/debforge-scx-state"
+LOG="/tmp/scx-switcher-install.log"
+STATE_DIR="/tmp/scx-switcher-state"
 STEP_FILE="$STATE_DIR/completed_steps"
-LOCK_FILE="/tmp/debforge-scx-install.lock"
+LOCK_FILE="/tmp/scx-switcher-install.lock"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 FLAG_RESUME=false
@@ -69,7 +69,7 @@ done
 # ── Preflight ───────────────────────────────────────────────────────────
 echo ""
 echo -e "  ${CYAN}╔══════════════════════════════════════╗${NC}"
-echo -e "  ${CYAN}║       DebForge SCX — Installer       ║${NC}"
+echo -e "  ${CYAN}║       SCX Switcher — Installer       ║${NC}"
 echo -e "  ${CYAN}╚══════════════════════════════════════╝${NC}"
 echo ""
 
@@ -83,7 +83,7 @@ fi
 echo "1" > "$LOCK_FILE"
 
 exec > >(tee -a "$LOG") 2>&1
-log "=== debforge-scx install started ==="
+log "=== scx-switcher install started ==="
 
 TOTAL=8
 
@@ -184,8 +184,8 @@ if ! $FLAG_SKIP_SCHED; then
         local scx_hash
         scx_hash=$(git -C "$BUILD/scx" rev-parse HEAD 2>/dev/null || true)
         if [ -n "$scx_hash" ]; then
-            sudo mkdir -p /var/lib/debforge-scx
-            echo "SCX_COMMIT=$scx_hash" | sudo tee /var/lib/debforge-scx/versions >/dev/null
+            sudo mkdir -p /var/lib/scx-switcher
+            echo "SCX_COMMIT=$scx_hash" | sudo tee /var/lib/scx-switcher/versions >/dev/null
         fi
         ok
     fi
@@ -232,7 +232,7 @@ if ! $FLAG_SKIP_LOADER; then
         local loader_hash
         loader_hash=$(git -C "$BUILD/loader" rev-parse HEAD 2>/dev/null || true)
         if [ -n "$loader_hash" ]; then
-            echo "SCX_LOADER_COMMIT=$loader_hash" | sudo tee -a /var/lib/debforge-scx/versions >/dev/null
+            echo "SCX_LOADER_COMMIT=$loader_hash" | sudo tee -a /var/lib/scx-switcher/versions >/dev/null
         fi
         ok
     fi
@@ -242,7 +242,7 @@ fi
 
 # ── Step 6: Build & install GUI ────────────────────────────────────────
 if ! $FLAG_SKIP_GUI; then
-    step 6 "Building DebForge SCX GUI"
+    step 6 "Building SCX Switcher GUI"
     if step_is_completed "gui" && $FLAG_RESUME; then
         skip "already built"
     else
@@ -290,7 +290,7 @@ done_s "Installation complete."
 echo ""
 info "To start using:"
 info "  1. Reboot or run: sudo systemctl start scx_loader.service"
-info "  2. Launch: debforge-scx"
+info "  2. Launch: scx-switcher"
 echo ""
 info "Log saved to: $LOG"
 echo ""

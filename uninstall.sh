@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# debforge-scx — Complete uninstall of sched-ext + GUI
+# scx-switcher — Complete uninstall of sched-ext + GUI
 set -euo pipefail
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -14,7 +14,7 @@ fi
 
 echo ""
 echo -e "  ${YELLOW}╔══════════════════════════════════════╗${NC}"
-echo -e "  ${YELLOW}║    DebForge SCX — Uninstaller        ║${NC}"
+echo -e "  ${YELLOW}║    SCX Switcher — Uninstaller        ║${NC}"
 echo -e "  ${YELLOW}╚══════════════════════════════════════╝${NC}"
 echo ""
 
@@ -35,7 +35,7 @@ ok
 
 # Remove binaries
 info "Removing binaries..."
-sudo rm -f /usr/bin/scx_loader /usr/bin/scxctl /usr/bin/debforge-scx
+sudo rm -f /usr/bin/scx_loader /usr/bin/scxctl /usr/bin/scx-switcher
 for f in /usr/bin/scx_*; do
     [ -f "$f" ] || continue
     case "$(basename "$f")" in
@@ -53,7 +53,7 @@ sudo rm -f /usr/share/dbus-1/system-services/org.scx.Loader.service
 sudo rm -f /usr/share/dbus-1/system.d/org.scx.Loader.conf
 sudo rm -f /usr/share/dbus-1/interfaces/org.scx.Loader.xml
 sudo rm -f /usr/share/polkit-1/actions/org.scx.Loader.policy
-sudo rm -f /usr/share/polkit-1/actions/com.debforge.scx.policy
+sudo rm -f /usr/share/polkit-1/actions/com.scx-switcher.policy
 ok
 
 # Remove config
@@ -63,9 +63,9 @@ ok
 
 # Remove desktop/metainfo/icons
 info "Removing desktop files..."
-sudo rm -f /usr/share/applications/debforge-scx.desktop
-sudo rm -f /usr/share/metainfo/debforge-scx.metainfo.xml
-sudo rm -f /usr/share/icons/hicolor/scalable/apps/debforge-scx.svg
+sudo rm -f /usr/share/applications/scx-switcher.desktop
+sudo rm -f /usr/share/metainfo/scx-switcher.metainfo.xml
+sudo rm -f /usr/share/icons/hicolor/scalable/apps/scx-switcher.svg
 ok
 
 # Reload systemd
@@ -74,14 +74,14 @@ sudo systemctl daemon-reload
 ok
 
 # Clean user state
-STATE_DIR="$HOME/.local/state/debforge-scx"
+STATE_DIR="$HOME/.local/state/scx-switcher"
 if [ -d "$STATE_DIR" ]; then
     info "Removing user state: $STATE_DIR"
     rm -rf "$STATE_DIR"
 fi
 
 # Clean version tracking state
-VERSIONS_FILE="/var/lib/debforge-scx/versions"
+VERSIONS_FILE="/var/lib/scx-switcher/versions"
 if [ -f "$VERSIONS_FILE" ]; then
     info "Removing version state..."
     sudo rm -f "$VERSIONS_FILE"

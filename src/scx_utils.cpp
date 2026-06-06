@@ -165,7 +165,7 @@ static QString stateFilePath() {
         dir = QDir::homePath() + "/.local/state";
     else
         dir = qgetenv("XDG_STATE_HOME");
-    return dir + "/debforge-scx/state.json";
+    return dir + "/scx-switcher/state.json";
 }
 
 static QJsonObject readStateFile() {
