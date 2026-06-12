@@ -10,6 +10,7 @@ STATE_DIR="/tmp/scx-switcher-state"
 STEP_FILE="$STATE_DIR/completed_steps"
 LOCK_FILE="/tmp/scx-switcher-install.lock"
 DEB_DIR="/tmp/scx-switcher-debs"
+ARCH="${ARCH:-$(dpkg --print-architecture 2>/dev/null || echo "amd64")}"
 
 FLAG_RESUME=false
 FLAG_SKIP_GUI=false
@@ -36,7 +37,8 @@ step_is_completed() {
 fetch_latest_tag() {
     OWNER_REPO="${REPO#https://github.com/}"
     API="https://api.github.com/repos/$OWNER_REPO/releases/latest"
-    curl -sL "$API" | grep -m1 '"tag_name"' | sed 's/.*"tag_name": "//;s/".*//'
+    curl -sL "$API" | jq -r '.tag_name' 2>/dev/null || \
+        curl -sL "$API" | grep -m1 '"tag_name"' | sed 's/.*"tag_name": "//;s/".*//'
 }
 
 cleanup() { rm -f "$LOCK_FILE"; }
@@ -121,7 +123,7 @@ else
 
     info "Installing build + runtime packages..."
     sudo apt-get install -y \
-        qt6-base-dev libgl-dev cmake g++ polkitd pkexec curl \
+        qt6-base-dev libgl-dev cmake g++ polkitd pkexec curl jq \
         || fail "apt install failed"
 
     step_completed "deps"
@@ -141,8 +143,8 @@ else
 
         if [ -n "$FLAG_LOCAL_DEBS" ]; then
             info "Using .debs from $FLAG_LOCAL_DEBS..."
-            cp "$FLAG_LOCAL_DEBS"/scx-scheds_*_amd64.deb "$DEB_DIR/" 2>/dev/null || fail "scx-scheds .deb not found in $FLAG_LOCAL_DEBS"
-            cp "$FLAG_LOCAL_DEBS"/scx-tools_*_amd64.deb "$DEB_DIR/" 2>/dev/null || fail "scx-tools .deb not found in $FLAG_LOCAL_DEBS"
+            cp "$FLAG_LOCAL_DEBS"/scx-scheds_*_${ARCH}.deb "$DEB_DIR/" 2>/dev/null || fail "scx-scheds .deb not found in $FLAG_LOCAL_DEBS"
+            cp "$FLAG_LOCAL_DEBS"/scx-tools_*_${ARCH}.deb "$DEB_DIR/" 2>/dev/null || fail "scx-tools .deb not found in $FLAG_LOCAL_DEBS"
         else
             TAG=$(fetch_latest_tag)
             if [ -z "$TAG" ]; then
@@ -152,9 +154,9 @@ else
             BASE_URL="$REPO/releases/download/$TAG"
             info "Latest release: $TAG"
             info "Downloading scx-scheds..."
-            curl -sL "$BASE_URL/scx-scheds_${VERSION}_amd64.deb" -o "$DEB_DIR/scx-scheds_${VERSION}_amd64.deb" || fail "scx-scheds download failed"
+            curl -sL "$BASE_URL/scx-scheds_${VERSION}_${ARCH}.deb" -o "$DEB_DIR/scx-scheds_${VERSION}_${ARCH}.deb" || fail "scx-scheds download failed"
             info "Downloading scx-tools..."
-            curl -sL "$BASE_URL/scx-tools_${VERSION}_amd64.deb" -o "$DEB_DIR/scx-tools_${VERSION}_amd64.deb" || fail "scx-tools download failed"
+            curl -sL "$BASE_URL/scx-tools_${VERSION}_${ARCH}.deb" -o "$DEB_DIR/scx-tools_${VERSION}_${ARCH}.deb" || fail "scx-tools download failed"
         fi
 
         info "Installing scx-scheds + scx-tools..."

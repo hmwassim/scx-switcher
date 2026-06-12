@@ -34,6 +34,6 @@ Or use the install script (auto-downloads .debs, builds GUI from source):
 ## Build
 
 ```sh
-sudo apt install dpkg-dev debhelper cmake qt6-base-dev g++
+sudo apt install dpkg-dev debhelper cmake qt6-base-dev libgl-dev g++
 ./build-deb.sh
 ```

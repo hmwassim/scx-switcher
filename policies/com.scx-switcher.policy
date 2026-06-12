@@ -3,8 +3,8 @@
  "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 <policyconfig>
-  <vendor>DebForge</vendor>
-  <vendor_url>https://github.com/yourorg/scx-switcher</vendor_url>
+  <vendor>SCX Switcher</vendor>
+  <vendor_url>https://github.com/hmwassim/scx-switcher</vendor_url>
   <icon_name>scx-switcher</icon_name>
 
   <action id="com.scx-switcher.ctl-scxctl">

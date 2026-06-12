@@ -7,6 +7,7 @@ REPO="https://github.com/hmwassim/scx-bundler"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG="/tmp/scx-switcher-update.log"
 DEB_DIR="/tmp/scx-switcher-update-debs"
+ARCH="${ARCH:-$(dpkg --print-architecture 2>/dev/null || echo "amd64")}"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()  { echo -e "  ${CYAN}::${NC} $*"; }
@@ -34,7 +35,8 @@ log "=== scx-switcher update started ==="
 # Detect latest release
 OWNER_REPO="${REPO#https://github.com/}"
 API="https://api.github.com/repos/$OWNER_REPO/releases/latest"
-TAG=$(curl -sL "$API" | grep -m1 '"tag_name"' | sed 's/.*"tag_name": "//;s/".*//')
+TAG=$(curl -sL "$API" | jq -r '.tag_name' 2>/dev/null || \
+      curl -sL "$API" | grep -m1 '"tag_name"' | sed 's/.*"tag_name": "//;s/".*//')
 if [ -z "$TAG" ]; then
     fail "Could not determine latest release from $REPO"
 fi
@@ -49,13 +51,13 @@ BASE_URL="$REPO/releases/download/$TAG"
 info "Downloading scx-scheds..."
 rm -rf "$DEB_DIR"
 mkdir -p "$DEB_DIR"
-curl -sL "$BASE_URL/scx-scheds_${VERSION}_amd64.deb" \
-    -o "$DEB_DIR/scx-scheds_${VERSION}_amd64.deb" || fail "scx-scheds download failed"
+curl -sL "$BASE_URL/scx-scheds_${VERSION}_${ARCH}.deb" \
+    -o "$DEB_DIR/scx-scheds_${VERSION}_${ARCH}.deb" || fail "scx-scheds download failed"
 ok
 
 info "Downloading scx-tools..."
-curl -sL "$BASE_URL/scx-tools_${VERSION}_amd64.deb" \
-    -o "$DEB_DIR/scx-tools_${VERSION}_amd64.deb" || fail "scx-tools download failed"
+curl -sL "$BASE_URL/scx-tools_${VERSION}_${ARCH}.deb" \
+    -o "$DEB_DIR/scx-tools_${VERSION}_${ARCH}.deb" || fail "scx-tools download failed"
 ok
 
 # Step 2: Install .debs

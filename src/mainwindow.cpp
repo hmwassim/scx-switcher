@@ -4,6 +4,7 @@
 #include "config.h"
 
 #include <QApplication>
+#include <memory>
 #include <QLineEdit>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -20,7 +21,7 @@
 #include <QScrollBar>
 
 const QString MainWindow::APP_NAME = "SCX Switcher";
-const QString MainWindow::APP_VERSION = "1.0.0";
+const QString MainWindow::APP_VERSION = APP_BINARY_VERSION;
 
 static QIcon makeDotIcon(const QColor &color) {
     QPixmap pm(16, 16);
@@ -44,11 +45,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(m_marqueeTimer, &QTimer::timeout, this, &MainWindow::updateMarquee);
 
     checkKernelAndBuildUi();
-
-    QTimer::singleShot(0, this, [this]() {
-        adjustSize();
-        setFixedSize(size());
-    });
 }
 
 void MainWindow::buildUi() {
@@ -150,72 +146,16 @@ void MainWindow::buildNormalMode() {
     });
     connect(m_controlTab, &ControlTab::statusRefreshRequested, this, &MainWindow::refreshStatus);
 
-    auto *refTab = new QWidget;
-    auto *refLayout = new QVBoxLayout(refTab);
-    auto *refTitle = new QLabel("Scheduler Reference");
-    QFont rf = refTitle->font();
-    rf.setPointSize(13);
-    rf.setBold(true);
-    refTitle->setFont(rf);
-    refLayout->addWidget(refTitle);
-
-    QStringList installed = scx_utils::listSchedulers();
-    if (installed.isEmpty()) {
-        log("No schedulers installed");
-        return;
-    }
-
-    for (const auto &schedInfo : ALL_SCHEDULERS) {
-        if (!installed.contains(schedInfo.bare))
-            continue;
-
-        auto *card = new QGroupBox;
-        auto *cl = new QVBoxLayout(card);
-        cl->setContentsMargins(10, 6, 10, 6);
-
-        auto *hl = new QHBoxLayout;
-        auto *nl = new QLabel(schedInfo.display);
-        QFont nf = nl->font();
-        nf.setPointSize(12);
-        nf.setBold(true);
-        nl->setFont(nf);
-        hl->addWidget(nl);
-        hl->addWidget(new QLabel(QString("(scx_%1)").arg(schedInfo.bare)));
-        hl->addStretch();
-        auto *cl2 = new QLabel(schedInfo.category);
-        cl2->setStyleSheet("color: #88aaff; font-size: 11px; padding: 2px 6px; "
-                           "border: 1px solid #6688cc; border-radius: 4px;");
-        hl->addWidget(cl2);
-        cl->addLayout(hl);
-
-        auto *dl = new QLabel(schedInfo.desc);
-        dl->setWordWrap(true);
-        dl->setStyleSheet("color: #bbb; font-size: 12px;");
-        cl->addWidget(dl);
-
-        QStringList modeLabels;
-        for (const auto &m : schedInfo.modes)
-            modeLabels << scx_utils::humanizeMode(m);
-        auto *ml = new QLabel(QString("Supported modes: %1").arg(modeLabels.join(", ")));
-        ml->setStyleSheet("color: #88dd88; font-size: 11px; margin-top: 4px;");
-        cl->addWidget(ml);
-
-        refLayout->addWidget(card);
-    }
-    refLayout->addStretch();
-    auto *scrollArea = new QScrollArea;
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setWidget(refTab);
-    scrollArea->setFrameShape(QFrame::NoFrame);
-
     m_tabs->addTab(m_controlTab, "Control");
-    m_tabs->addTab(scrollArea, "Reference");
 
     m_tray = new QSystemTrayIcon(makeDotIcon(QColor("#888888")), this);
     auto *menu = new QMenu;
     menu->addAction("Show Window", this, [this]() { show(); raise(); activateWindow(); });
     menu->addSeparator();
-    menu->addAction("Quit", qApp, &QApplication::quit);
+    menu->addAction("Quit", this, [this]() {
+        if (m_statusTimer) m_statusTimer->stop();
+        QApplication::quit();
+    });
     m_tray->setContextMenu(menu);
     m_tray->setToolTip(APP_NAME);
     m_tray->show();
@@ -228,6 +168,8 @@ void MainWindow::buildNormalMode() {
 
     log(APP_NAME + " initialized");
 
+    buildReferenceTab();
+
     m_statusTimer = new QTimer(this);
     m_statusTimer->setInterval(3000);
     connect(m_statusTimer, &QTimer::timeout, this, &MainWindow::refreshStatus);
@@ -235,24 +177,103 @@ void MainWindow::buildNormalMode() {
     m_statusTimer->start();
 }
 
+void MainWindow::buildReferenceTab() {
+    auto *utils = scx_utils::instance();
+    auto conn = std::make_shared<QMetaObject::Connection>();
+    *conn = connect(utils, &ScxUtils::schedulersListed, this,
+        [this, conn](const QStringList &installed) {
+            disconnect(*conn);
+
+            if (installed.isEmpty()) {
+                log("No schedulers installed, skipping reference tab");
+                return;
+            }
+
+            auto *refTab = new QWidget;
+            auto *refLayout = new QVBoxLayout(refTab);
+            auto *refTitle = new QLabel("Scheduler Reference");
+            QFont rf = refTitle->font();
+            rf.setPointSize(13);
+            rf.setBold(true);
+            refTitle->setFont(rf);
+            refLayout->addWidget(refTitle);
+
+            for (const auto &schedInfo : ALL_SCHEDULERS) {
+                if (!installed.contains(schedInfo.bare))
+                    continue;
+
+                auto *card = new QGroupBox;
+                auto *cl = new QVBoxLayout(card);
+                cl->setContentsMargins(10, 6, 10, 6);
+
+                auto *hl = new QHBoxLayout;
+                auto *nl = new QLabel(schedInfo.display);
+                QFont nf = nl->font();
+                nf.setPointSize(12);
+                nf.setBold(true);
+                nl->setFont(nf);
+                hl->addWidget(nl);
+                hl->addWidget(new QLabel(QString("(scx_%1)").arg(schedInfo.bare)));
+                hl->addStretch();
+                auto *cl2 = new QLabel(schedInfo.category);
+                cl2->setStyleSheet("color: #88aaff; font-size: 11px; padding: 2px 6px; "
+                                   "border: 1px solid #6688cc; border-radius: 4px;");
+                hl->addWidget(cl2);
+                cl->addLayout(hl);
+
+                auto *dl = new QLabel(schedInfo.desc);
+                dl->setWordWrap(true);
+                dl->setStyleSheet("color: #bbb; font-size: 12px;");
+                cl->addWidget(dl);
+
+                QStringList modeLabels;
+                for (const auto &m : ScxUtils::supportedModes(schedInfo.bare))
+                    modeLabels << ScxUtils::humanizeMode(m);
+                auto *ml = new QLabel(QString("Supported modes: %1").arg(modeLabels.join(", ")));
+                ml->setStyleSheet("color: #88dd88; font-size: 11px; margin-top: 4px;");
+                cl->addWidget(ml);
+
+                refLayout->addWidget(card);
+            }
+            refLayout->addStretch();
+            auto *scrollArea = new QScrollArea;
+            scrollArea->setWidgetResizable(true);
+            scrollArea->setWidget(refTab);
+            scrollArea->setFrameShape(QFrame::NoFrame);
+
+            m_tabs->addTab(scrollArea, "Reference");
+
+            adjustSize();
+            setFixedSize(size());
+        });
+
+    utils->listSchedulers();
+}
+
 void MainWindow::checkKernelAndBuildUi() {
-    auto [supported, msg] = scx_utils::checkKernelSupport();
-    m_kernelSupported = supported;
+    auto *utils = scx_utils::instance();
+    auto conn = std::make_shared<QMetaObject::Connection>();
+    *conn = connect(utils, &ScxUtils::kernelSupportChecked, this,
+        [this, conn, utils](bool supported, const QString &msg) {
+            disconnect(*conn);
+            m_kernelChecked = true;
 
-    if (!supported) {
-        m_statusDot->setStyleSheet("color: #cc0000;");
-        m_statusLabel->setText("Kernel unsupported \u2014 " + msg);
-        m_stopBtn->setEnabled(false);
-        m_tabs->addTab(buildUnsupportedPage(), "Unsupported Kernel");
-        return;
-    }
+            if (!supported) {
+                m_statusDot->setStyleSheet("color: #cc0000;");
+                m_statusLabel->setText("Kernel unsupported \u2014 " + msg);
+                m_stopBtn->setEnabled(false);
+                m_tabs->addTab(buildUnsupportedPage(), "Unsupported Kernel");
+            } else if (ScxUtils::isScxctlInstalled()) {
+                buildNormalMode();
+            } else {
+                buildSetupMode();
+                m_statusLabel->setText("scxctl not found");
+            }
 
-    if (scx_utils::isScxctlInstalled()) {
-        buildNormalMode();
-    } else {
-        buildSetupMode();
-        m_statusLabel->setText("scxctl not found");
-    }
+            adjustSize();
+            setFixedSize(size());
+        });
+    utils->checkKernelSupport();
 }
 
 QWidget *MainWindow::buildUnsupportedPage() {
@@ -308,42 +329,71 @@ QWidget *MainWindow::buildUnsupportedPage() {
 }
 
 void MainWindow::refreshStatus() {
-    auto [kernelOk, kernelMsg] = scx_utils::checkKernelSupport();
-    if (!kernelOk) {
-        m_statusDot->setStyleSheet("color: #cc0000;");
-        m_statusLabel->setText("Kernel unsupported");
-        m_statusLabel->setToolTip(kernelMsg);
-        m_stopBtn->setEnabled(false);
-        toggleTrayIcon(false);
-        m_marqueeTimer->stop();
-        return;
-    }
-    auto s = scx_utils::getSchedulerStatus();
-    if (s.active) {
-        m_statusDot->setStyleSheet("color: #00cc00;");
-        QString schedName = scx_utils::humanizeScheduler(s.name);
-        QString modeName = scx_utils::humanizeMode(s.mode);
-        QString text = QString("Running: %1 (%2)").arg(schedName, modeName);
+    if (m_refreshing) return;
+    m_refreshing = true;
 
-        m_statusLabel->setText(text);
-        m_statusLabel->setToolTip(text);
-        m_stopBtn->setEnabled(true);
-        toggleTrayIcon(true, s.name);
+    auto *utils = scx_utils::instance();
 
-        if (text.length() > 50) {
-            m_marqueeText = text;
-            m_marqueeOffset = 0;
-            m_marqueeTimer->start();
-        } else {
-            m_marqueeTimer->stop();
-        }
+    auto fetchStatus = [this, utils]() {
+        auto conn = std::make_shared<QMetaObject::Connection>();
+        *conn = connect(utils, &ScxUtils::schedulerStatusReady, this,
+            [this, conn](const SchedStatus &s) {
+                disconnect(*conn);
+                m_refreshing = false;
+
+                if (s.active) {
+                    m_statusDot->setStyleSheet("color: #00cc00;");
+                    QString schedName = ScxUtils::humanizeScheduler(s.name);
+                    QString modeName = ScxUtils::humanizeMode(s.mode);
+                    QString text = QString("Running: %1 (%2)").arg(schedName, modeName);
+
+                    m_statusLabel->setText(text);
+                    m_statusLabel->setToolTip(text);
+                    m_stopBtn->setEnabled(true);
+                    toggleTrayIcon(true, s.name);
+
+                    if (text.length() > 50) {
+                        m_marqueeText = text;
+                        m_marqueeOffset = 0;
+                        m_marqueeTimer->start();
+                    } else {
+                        m_marqueeTimer->stop();
+                    }
+                } else {
+                    m_statusDot->setStyleSheet("color: #cc0000;");
+                    m_statusLabel->setText("EEVDF (default)");
+                    m_statusLabel->setToolTip({});
+                    m_stopBtn->setEnabled(false);
+                    toggleTrayIcon(false);
+                    m_marqueeTimer->stop();
+                }
+            });
+        utils->getSchedulerStatus();
+    };
+
+    if (!m_kernelChecked) {
+        m_kernelChecked = true;
+        auto conn = std::make_shared<QMetaObject::Connection>();
+        *conn = connect(utils, &ScxUtils::kernelSupportChecked, this,
+            [this, conn, fetchStatus](bool kernelOk, const QString &kernelMsg) {
+                disconnect(*conn);
+
+                if (!kernelOk) {
+                    m_statusDot->setStyleSheet("color: #cc0000;");
+                    m_statusLabel->setText("Kernel unsupported");
+                    m_statusLabel->setToolTip(kernelMsg);
+                    m_stopBtn->setEnabled(false);
+                    toggleTrayIcon(false);
+                    m_marqueeTimer->stop();
+                    m_refreshing = false;
+                    return;
+                }
+
+                fetchStatus();
+            });
+        utils->checkKernelSupport();
     } else {
-        m_statusDot->setStyleSheet("color: #cc0000;");
-        m_statusLabel->setText("EEVDF (default)");
-        m_statusLabel->setToolTip({});
-        m_stopBtn->setEnabled(false);
-        toggleTrayIcon(false);
-        m_marqueeTimer->stop();
+        fetchStatus();
     }
 }
 

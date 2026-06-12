@@ -17,6 +17,8 @@ add_executable(scx-switcher
 
 target_link_libraries(scx-switcher PRIVATE Qt6::Core Qt6::Widgets Qt6::Network)
 
+target_compile_definitions(scx-switcher PRIVATE APP_BINARY_VERSION="${PROJECT_VERSION}")
+
 target_compile_options(scx-switcher PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
 )

@@ -1,56 +1,95 @@
 #include "priv_ops.h"
-#include "config.h"
 
 #include <QProcess>
 #include <QTemporaryFile>
 #include <QFile>
-#include <QCoreApplication>
-#include <QStandardPaths>
 #include <QDir>
+#include <QStandardPaths>
 
-namespace priv_ops {
+static const QString SCX_LOADER_CONFIG  = "/etc/scx_loader/config.toml";
 
-static const QString PKEXEC   = "pkexec";
-static const QString SCXCTL   = "scxctl";
-static const QString SYSTEMCTL = "systemctl";
-static const QString SERVICE  = "scx_loader.service";
+#ifndef SCXCTL_BIN
+#define SCXCTL_BIN "scxctl"
+#endif
+#ifndef SYSTEMCTL_BIN
+#define SYSTEMCTL_BIN "systemctl"
+#endif
+#ifndef PKEXEC_BIN
+#define PKEXEC_BIN "pkexec"
+#endif
 
-static bool runPrivileged(const QStringList &args, QString *output = nullptr) {
-    QProcess proc;
-    proc.start(PKEXEC, args);
-    if (!proc.waitForFinished(60000))
-        return false;
-    int code = proc.exitCode();
-    if (output)
-        *output = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-    return code == 0;
+static const QString PKEXEC    = PKEXEC_BIN;
+static const QString SCXCTL    = SCXCTL_BIN;
+static const QString SYSTEMCTL = SYSTEMCTL_BIN;
+static const QString SERVICE   = "scx_loader.service";
+
+PrivOps *PrivOps::instance() {
+    static PrivOps *inst = new PrivOps;
+    return inst;
 }
 
-bool isPolkitAgentRunning() {
+PrivOps::PrivOps(QObject *parent) : QObject(parent) {
+    m_proc = new QProcess(this);
+    m_proc->setProcessChannelMode(QProcess::SeparateChannels);
+
+    connect(m_proc, &QProcess::finished, this, [this](int exitCode, QProcess::ExitStatus status) {
+        bool success = (status == QProcess::NormalExit && exitCode == 0);
+        QString stdOut = QString::fromUtf8(m_proc->readAllStandardOutput()).trimmed();
+        QString stdErr = QString::fromUtf8(m_proc->readAllStandardError()).trimmed();
+
+        if (!m_lastTmpFile.isEmpty()) {
+            QFile::remove(m_lastTmpFile);
+            m_lastTmpFile.clear();
+        }
+
+        if (m_callback) {
+            QString msg = success ? stdOut : (stdErr.isEmpty() ? stdOut : stdErr);
+            auto cb = std::move(m_callback);
+            m_callback = nullptr;
+            cb(success, msg);
+        }
+    });
+}
+
+PrivOps::~PrivOps() {
+    if (!m_lastTmpFile.isEmpty())
+        QFile::remove(m_lastTmpFile);
+}
+
+bool PrivOps::isPolkitAgentRunning() {
     return !QStandardPaths::findExecutable(PKEXEC).isEmpty();
 }
 
-bool startScheduler(const QString &sched, const QString &mode) {
-    return runPrivileged({SCXCTL, "start", "--sched", sched, "--mode", mode});
+void PrivOps::runPrivileged(const QStringList &args, Callback cb) {
+    m_callback = std::move(cb);
+    if (!m_lastTmpFile.isEmpty()) {
+        QFile::remove(m_lastTmpFile);
+        m_lastTmpFile.clear();
+    }
+    m_proc->start(PKEXEC, args);
 }
 
-bool stopScheduler() {
-    return runPrivileged({SCXCTL, "stop"});
+void PrivOps::startScheduler(const QString &sched, const QString &mode, Callback cb) {
+    runPrivileged({SCXCTL, "start", "--sched", sched, "--mode", mode}, std::move(cb));
 }
 
-bool switchScheduler(const QString &sched, const QString &mode) {
-    return runPrivileged({SCXCTL, "switch", "--sched", sched, "--mode", mode});
+void PrivOps::stopScheduler(Callback cb) {
+    runPrivileged({SCXCTL, "stop"}, std::move(cb));
 }
 
-bool enableService() {
-    return runPrivileged({SYSTEMCTL, "enable", "--now", SERVICE});
+void PrivOps::switchScheduler(const QString &sched, const QString &mode, Callback cb) {
+    runPrivileged({SCXCTL, "switch", "--sched", sched, "--mode", mode}, std::move(cb));
 }
 
-bool disableService() {
-    return runPrivileged({SYSTEMCTL, "disable", "--now", SERVICE});
+void PrivOps::enableService(Callback cb) {
+    runPrivileged({SYSTEMCTL, "enable", "--now", SERVICE}, std::move(cb));
 }
 
-void writeConfigToml(const QString &sched, const QString &mode) {
+void PrivOps::disableService(Callback cb) {
+    runPrivileged({SYSTEMCTL, "disable", "--now", SERVICE}, std::move(cb));
+}
+
+void PrivOps::writeConfigToml(const QString &sched, const QString &mode, Callback cb) {
     static const QHash<QString, QString> modeMap = {
         {"auto", "Auto"}, {"gaming", "Gaming"},
         {"lowlatency", "LowLatency"}, {"powersave", "PowerSave"},
@@ -64,14 +103,13 @@ void writeConfigToml(const QString &sched, const QString &mode) {
 
     QTemporaryFile tmp(QDir::tempPath() + "/scx-switcher-XXXXXX.toml");
     tmp.setAutoRemove(false);
-    if (!tmp.open())
+    if (!tmp.open()) {
+        if (cb) cb(false, "Failed to create config file");
         return;
+    }
     tmp.write(content.toUtf8());
-    QString tmpName = tmp.fileName();
+    m_lastTmpFile = tmp.fileName();
     tmp.close();
 
-    runPrivileged({"cp", tmpName, "/etc/scx_loader/config.toml"});
-    QFile::remove(tmpName);
+    runPrivileged({"cp", m_lastTmpFile, SCX_LOADER_CONFIG}, std::move(cb));
 }
-
-} // namespace priv_ops

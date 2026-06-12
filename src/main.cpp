@@ -1,10 +1,7 @@
 #include "mainwindow.h"
 #include <QApplication>
-#include <QLockFile>
 #include <QLocalServer>
 #include <QLocalSocket>
-#include <QStandardPaths>
-#include <QDir>
 #include <QMessageBox>
 
 int main(int argc, char *argv[]) {
@@ -13,21 +10,6 @@ int main(int argc, char *argv[]) {
     app.setApplicationVersion(MainWindow::APP_VERSION);
     app.setOrganizationName("scx-switcher");
     app.setQuitOnLastWindowClosed(false);
-
-    QString cacheDir = QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation);
-    QDir().mkpath(cacheDir);
-    QString lockPath = cacheDir + "/scx-switcher.lock";
-    QLockFile lockFile(lockPath);
-
-    if (!lockFile.tryLock(100)) {
-        QLocalSocket socket;
-        socket.connectToServer("scx-switcher");
-        if (socket.waitForConnected(1000)) {
-            socket.write("show");
-            socket.waitForBytesWritten(500);
-        }
-        return 0;
-    }
 
     QLocalServer server;
     QLocalServer::removeServer("scx-switcher");

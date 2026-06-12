@@ -8,31 +8,90 @@
 #include <QFileInfo>
 #include <QStandardPaths>
 #include <QProcess>
-#include <QCoreApplication>
+#include <QSysInfo>
+#include <QFile>
 
-namespace scx_utils {
+const QString ScxUtils::SCXCTL   = "scxctl";
+const QString ScxUtils::SYSTEMCTL = "systemctl";
+const QString ScxUtils::SERVICE  = "scx_loader.service";
 
-static const QString SCXCTL   = "scxctl";
-static const QString SYSTEMCTL = "systemctl";
-static const QString SERVICE  = "scx_loader.service";
+ScxUtils::ScxUtils(QObject *parent) : QObject(parent) {
+    m_proc = new QProcess(this);
+    m_proc->setProcessChannelMode(QProcess::MergedChannels);
 
-bool isToolInstalled(const QString &name) {
+    connect(m_proc, &QProcess::finished, this, [this](int exitCode) {
+        QString out = QString::fromUtf8(m_proc->readAll()).trimmed();
+
+        switch (m_currentOp) {
+        case KernelCheck:
+            handleKernelCheck(out);
+            break;
+        case Status:
+            handleStatus(exitCode, out);
+            break;
+        case List:
+            handleList(exitCode, out);
+            break;
+        case ServiceCheck:
+            handleServiceCheck(exitCode, out);
+            break;
+        default:
+            break;
+        }
+
+        m_currentOp = None;
+        processNext();
+    });
+}
+
+bool ScxUtils::isToolInstalled(const QString &name) {
     return !QStandardPaths::findExecutable(name).isEmpty();
 }
 
-bool isScxctlInstalled() {
+bool ScxUtils::isScxctlInstalled() {
     return isToolInstalled(SCXCTL);
 }
 
-std::pair<bool, QString> checkKernelSupport() {
-    QProcess proc;
-    proc.start("uname", {"-r"});
-    proc.waitForFinished(5000);
-    QString kernel = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
+void ScxUtils::enqueue(Op op, const QString &program, const QStringList &args) {
+    m_queue.enqueue({op, program, args});
+    if (m_currentOp == None)
+        processNext();
+}
+
+void ScxUtils::processNext() {
+    if (m_queue.isEmpty()) return;
+
+    auto next = m_queue.dequeue();
+    m_currentOp = next.op;
+    m_proc->start(next.program, next.args);
+}
+
+void ScxUtils::checkKernelSupport() {
+    enqueue(KernelCheck, "uname", {"-r"});
+}
+
+void ScxUtils::getSchedulerStatus() {
+    enqueue(Status, SCXCTL, {"get"});
+}
+
+void ScxUtils::listSchedulers() {
+    enqueue(List, SCXCTL, {"list"});
+}
+
+void ScxUtils::checkServiceEnabled() {
+    enqueue(ServiceCheck, SYSTEMCTL, {"is-enabled", SERVICE});
+}
+
+void ScxUtils::handleKernelCheck(const QString &out) {
+    QString kernel = out;
+    if (kernel.isEmpty())
+        kernel = QSysInfo::kernelVersion();
 
     QStringList parts = kernel.split('.');
-    if (parts.size() < 2)
-        return {false, "Unknown"};
+    if (parts.size() < 2) {
+        emit kernelSupportChecked(false, "Unknown");
+        return;
+    }
 
     bool ok1 = false, ok2 = false;
     int major = parts[0].toInt(&ok1);
@@ -42,34 +101,29 @@ std::pair<bool, QString> checkKernelSupport() {
     bool sysfsOk = QDir("/sys/kernel/sched_ext").exists();
 
     if (versionOk && sysfsOk)
-        return {true, QString("Supported \u2014 Linux %1").arg(kernel)};
-    if (versionOk && !sysfsOk)
-        return {false, QString("Kernel %1 meets 6.12+ but /sys/kernel/sched_ext not found").arg(kernel)};
-    return {false, QString("Kernel %1 \u2014 6.12+ required").arg(kernel)};
+        emit kernelSupportChecked(true, QString("Supported \u2014 Linux %1").arg(kernel));
+    else if (versionOk && !sysfsOk)
+        emit kernelSupportChecked(false, QString("Kernel %1 meets 6.12+ but /sys/kernel/sched_ext not found").arg(kernel));
+    else
+        emit kernelSupportChecked(false, QString("Kernel %1 \u2014 6.12+ required").arg(kernel));
 }
 
-SchedStatus getSchedulerStatus() {
+void ScxUtils::handleStatus(int exitCode, const QString &out) {
     SchedStatus s;
     s.name = "EEVDF";
     s.mode = "N/A";
 
-    QProcess proc;
-    proc.start(SCXCTL, {"get"});
-    proc.waitForFinished(5000);
-
-    if (proc.exitCode() != 0)
-        return s;
-
-    QString out = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-    if (out.isEmpty() || out.contains("not running", Qt::CaseInsensitive))
-        return s;
-
-    if (!out.startsWith("running", Qt::CaseInsensitive))
-        return s;
+    if (exitCode != 0 || out.isEmpty() || out.contains("not running", Qt::CaseInsensitive) ||
+        !out.startsWith("running", Qt::CaseInsensitive)) {
+        emit schedulerStatusReady(s);
+        return;
+    }
 
     QStringList words = out.split(' ', Qt::SkipEmptyParts);
-    if (words.size() < 2)
-        return s;
+    if (words.size() < 2) {
+        emit schedulerStatusReady(s);
+        return;
+    }
 
     s.active = true;
     s.name = words[1];
@@ -78,43 +132,40 @@ SchedStatus getSchedulerStatus() {
     auto m = re.match(out);
     s.mode = m.hasMatch() ? m.captured(1) : "N/A";
 
-    return s;
+    emit schedulerStatusReady(s);
 }
 
-QStringList listSchedulers() {
-    QProcess proc;
-    proc.start(SCXCTL, {"list"});
-    proc.waitForFinished(10000);
+void ScxUtils::handleList(int exitCode, const QString &out) {
+    if (exitCode != 0) {
+        emit schedulersListed({});
+        return;
+    }
 
-    if (proc.exitCode() != 0)
-        return {};
-
-    QString out = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
     int idx = out.indexOf("supported schedulers:");
-    if (idx == -1)
-        return {};
+    if (idx == -1) {
+        emit schedulersListed({});
+        return;
+    }
 
     QString json = out.mid(idx + QString("supported schedulers:").length()).trimmed();
     QJsonParseError err;
     QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8(), &err);
-    if (err.error != QJsonParseError::NoError || !doc.isArray())
-        return {};
+    if (err.error != QJsonParseError::NoError || !doc.isArray()) {
+        emit schedulersListed({});
+        return;
+    }
 
     QStringList list;
     for (const auto &v : doc.array())
         list.append(v.toString());
-    return list;
+    emit schedulersListed(list);
 }
 
-bool isServiceEnabled() {
-    QProcess proc;
-    proc.start(SYSTEMCTL, {"is-enabled", SERVICE});
-    proc.waitForFinished(5000);
-    return proc.exitCode() == 0 &&
-           QString::fromUtf8(proc.readAllStandardOutput()).contains("enabled");
+void ScxUtils::handleServiceCheck(int exitCode, const QString &out) {
+    emit serviceEnabledChecked(exitCode == 0 && out.contains("enabled"));
 }
 
-QStringList supportedModes(const QString &schedBareName) {
+QStringList ScxUtils::supportedModes(const QString &schedBareName) {
     static const QHash<QString, QStringList> map = {
         {"bpfland",   {"auto", "gaming", "lowlatency", "powersave", "server"}},
         {"lavd",      {"auto", "gaming", "lowlatency", "powersave", "server"}},
@@ -132,7 +183,7 @@ QStringList supportedModes(const QString &schedBareName) {
     return map.value(schedBareName, {"auto"});
 }
 
-QString humanizeScheduler(const QString &name) {
+QString ScxUtils::humanizeScheduler(const QString &name) {
     QString n = name;
     if (n.startsWith("scx_"))
         n = n.mid(4);
@@ -149,7 +200,7 @@ QString humanizeScheduler(const QString &name) {
     return n;
 }
 
-QString humanizeMode(const QString &mode) {
+QString ScxUtils::humanizeMode(const QString &mode) {
     if (mode.isEmpty() || mode == "N/A") return mode;
     static const QHash<QString, QString> map = {
         {"auto", "Auto"}, {"gaming", "Gaming"},
@@ -183,16 +234,14 @@ static void writeStateFile(const QJsonObject &obj) {
         f.write(QJsonDocument(obj).toJson());
 }
 
-void saveState(const QString &sched, const QString &mode) {
+void ScxUtils::saveState(const QString &sched, const QString &mode) {
     QJsonObject obj = readStateFile();
     obj["scheduler"] = sched;
     obj["mode"] = mode;
     writeStateFile(obj);
 }
 
-QPair<QString, QString> loadState() {
+QPair<QString, QString> ScxUtils::loadState() {
     QJsonObject obj = readStateFile();
     return {obj["scheduler"].toString(), obj["mode"].toString()};
 }
-
-} // namespace scx_utils

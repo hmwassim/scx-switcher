@@ -3,6 +3,7 @@
 #include "priv_ops.h"
 #include "config.h"
 
+#include <memory>
 #include <QVBoxLayout>
 #include <QGridLayout>
 #include <QGroupBox>
@@ -59,51 +60,65 @@ ControlTab::ControlTab(QWidget *parent) : QWidget(parent) {
 
     refreshSchedulerList();
 
-    QTimer::singleShot(0, this, [this]() {
+    auto *utils = scx_utils::instance();
+    connect(utils, &ScxUtils::serviceEnabledChecked, this, [this](bool enabled) {
         m_ignorePersist = true;
-        m_persistCb->setChecked(scx_utils::isServiceEnabled());
+        m_persistCb->setChecked(enabled);
         m_ignorePersist = false;
+    });
+    QTimer::singleShot(0, utils, [utils]() {
+        utils->checkServiceEnabled();
     });
 }
 
 void ControlTab::refreshSchedulerList() {
-    m_schedCombo->blockSignals(true);
-    m_modeCombo->blockSignals(true);
+    auto *utils = scx_utils::instance();
+    auto conn = std::make_shared<QMetaObject::Connection>();
+    *conn = connect(utils, &ScxUtils::schedulersListed, this,
+        [this, conn](const QStringList &scheds) {
+            disconnect(*conn);
 
-    m_schedCombo->clear();
-    m_modeCombo->clear();
+            m_schedCombo->blockSignals(true);
+            m_modeCombo->blockSignals(true);
 
-    QStringList scheds = scx_utils::listSchedulers();
-    if (scheds.isEmpty()) {
-        emit logMessage("scxctl list failed, using fallback list");
-        scheds = {"bpfland", "lavd", "rusty", "flash", "layered",
-                  "cosmos", "nest", "p2dq", "simple", "tickless"};
-    }
+            m_schedCombo->clear();
+            m_modeCombo->clear();
 
-    for (const auto &s : scheds) {
-        QString bare = s;
-        if (bare.startsWith("scx_"))
-            bare = bare.mid(4);
-        m_schedCombo->addItem(scx_utils::humanizeScheduler("scx_" + bare), bare);
-    }
+            QStringList list = scheds;
+            if (list.isEmpty()) {
+                emit logMessage("scxctl list failed, using fallback list");
+                list = {"bpfland", "lavd", "rusty", "flash", "layered",
+                        "cosmos", "nest", "p2dq", "simple", "tickless",
+                        "beerland", "rustland"};
+            }
 
-    auto state = scx_utils::loadState();
-    if (!state.first.isEmpty()) {
-        int idx = m_schedCombo->findData(state.first);
-        if (idx >= 0)
-            m_schedCombo->setCurrentIndex(idx);
-    }
+            for (const auto &s : list) {
+                QString bare = s;
+                if (bare.startsWith("scx_"))
+                    bare = bare.mid(4);
+                m_schedCombo->addItem(ScxUtils::humanizeScheduler("scx_" + bare), bare);
+            }
 
-    m_schedCombo->blockSignals(false);
-    onSchedChanged();
+            auto state = ScxUtils::loadState();
+            if (!state.first.isEmpty()) {
+                int idx = m_schedCombo->findData(state.first);
+                if (idx >= 0)
+                    m_schedCombo->setCurrentIndex(idx);
+            }
 
-    if (!state.second.isEmpty()) {
-        int modeIdx = m_modeCombo->findData(state.second);
-        if (modeIdx >= 0)
-            m_modeCombo->setCurrentIndex(modeIdx);
-    }
+            m_schedCombo->blockSignals(false);
+            onSchedChanged();
 
-    m_modeCombo->blockSignals(false);
+            if (!state.second.isEmpty()) {
+                int modeIdx = m_modeCombo->findData(state.second);
+                if (modeIdx >= 0)
+                    m_modeCombo->setCurrentIndex(modeIdx);
+            }
+
+            m_modeCombo->blockSignals(false);
+        });
+
+    utils->listSchedulers();
 }
 
 void ControlTab::setKernelUnsupported(bool unsupported) {
@@ -133,9 +148,9 @@ void ControlTab::onSchedChanged() {
 
     m_modeCombo->blockSignals(true);
     m_modeCombo->clear();
-    QStringList modes = scx_utils::supportedModes(bare);
+    QStringList modes = ScxUtils::supportedModes(bare);
     for (const auto &m : modes)
-        m_modeCombo->addItem(scx_utils::humanizeMode(m), m);
+        m_modeCombo->addItem(ScxUtils::humanizeMode(m), m);
     m_modeCombo->blockSignals(false);
 }
 
@@ -147,34 +162,44 @@ void ControlTab::onStartSwitch() {
     }
     QString mode = m_modeCombo->currentData().toString();
 
-    scx_utils::saveState(sched, mode);
+    ScxUtils::saveState(sched, mode);
 
-    if (!priv_ops::isPolkitAgentRunning()) {
+    if (!PrivOps::isPolkitAgentRunning()) {
         QMessageBox::warning(this, "PolKit Agent Not Found", ERROR_NO_POLKIT);
         return;
     }
 
-    auto current = scx_utils::getSchedulerStatus();
-    bool ok = true;
+    auto *utils = scx_utils::instance();
+    auto conn = std::make_shared<QMetaObject::Connection>();
+    *conn = connect(utils, &ScxUtils::schedulerStatusReady, this,
+        [this, conn, sched, mode](const SchedStatus &current) {
+            disconnect(*conn);
 
-    if (!current.active) {
-        emit logMessage(QString("Starting %1 (%2)...").arg(sched, mode));
-        ok = priv_ops::startScheduler(sched, mode);
-    } else if (current.name == sched && current.mode == mode) {
-        emit logMessage(QString("%1 (%2) is already running").arg(sched, mode));
-        return;
-    } else {
-        emit logMessage(QString("Switching to %1 (%2)...").arg(sched, mode));
-        ok = priv_ops::switchScheduler(sched, mode);
-    }
+            if (current.active && current.name == sched && current.mode == mode) {
+                emit logMessage(QString("%1 (%2) is already running").arg(sched, mode));
+                return;
+            }
 
-    if (ok) {
-        emit logMessage("Done");
-        priv_ops::writeConfigToml(sched, mode);
-    } else {
-        emit logMessage(ERROR_SWITCH_FAILED);
-    }
-    emit statusRefreshRequested();
+            auto onSchedOp = [this, sched, mode](bool ok, const QString &) {
+                if (ok) {
+                    emit logMessage("Done");
+                    PrivOps::instance()->writeConfigToml(sched, mode);
+                } else {
+                    emit logMessage(ERROR_SWITCH_FAILED);
+                }
+                emit statusRefreshRequested();
+            };
+
+            if (!current.active) {
+                emit logMessage(QString("Starting %1 (%2)...").arg(sched, mode));
+                PrivOps::instance()->startScheduler(sched, mode, std::move(onSchedOp));
+            } else {
+                emit logMessage(QString("Switching to %1 (%2)...").arg(sched, mode));
+                PrivOps::instance()->switchScheduler(sched, mode, std::move(onSchedOp));
+            }
+        });
+
+    utils->getSchedulerStatus();
 }
 
 void ControlTab::stopScheduler() {
@@ -182,22 +207,24 @@ void ControlTab::stopScheduler() {
 }
 
 void ControlTab::onStop() {
-    if (!priv_ops::isPolkitAgentRunning()) {
+    if (!PrivOps::isPolkitAgentRunning()) {
         QMessageBox::warning(this, "PolKit Agent Not Found", ERROR_NO_POLKIT);
         return;
     }
     emit logMessage("Stopping scheduler...");
-    if (priv_ops::stopScheduler())
-        emit logMessage("Stopped \u2014 back to EEVDF");
-    else
-        emit logMessage(ERROR_STOP_FAILED);
-    emit statusRefreshRequested();
+    PrivOps::instance()->stopScheduler([this](bool ok, const QString &) {
+        if (ok)
+            emit logMessage("Stopped \u2014 back to EEVDF");
+        else
+            emit logMessage(ERROR_STOP_FAILED);
+        emit statusRefreshRequested();
+    });
 }
 
 void ControlTab::onPersistToggled(bool checked) {
     if (m_ignorePersist) return;
 
-    if (!priv_ops::isPolkitAgentRunning()) {
+    if (!PrivOps::isPolkitAgentRunning()) {
         QMessageBox::warning(this, "PolKit Agent Not Found", ERROR_NO_POLKIT);
         m_ignorePersist = true;
         m_persistCb->setChecked(!checked);
@@ -205,25 +232,33 @@ void ControlTab::onPersistToggled(bool checked) {
         return;
     }
 
+    auto onDone = [this, checked](bool ok, const QString &) {
+        if (checked) {
+            if (ok)
+                emit logMessage("Enabled \u2014 last scheduler will apply at next boot");
+            else {
+                emit logMessage("Failed to enable: " + ERROR_PERSIST_FAILED_ENABLE);
+                m_ignorePersist = true;
+                m_persistCb->setChecked(false);
+                m_ignorePersist = false;
+            }
+        } else {
+            if (ok)
+                emit logMessage("Disabled \u2014 boot stays on EEVDF");
+            else {
+                emit logMessage("Failed to disable: " + ERROR_PERSIST_FAILED_DISABLE);
+                m_ignorePersist = true;
+                m_persistCb->setChecked(true);
+                m_ignorePersist = false;
+            }
+        }
+    };
+
     if (checked) {
         emit logMessage("Enabling auto-start on boot...");
-        if (priv_ops::enableService())
-            emit logMessage("Enabled \u2014 last scheduler will apply at next boot");
-        else {
-            emit logMessage("Failed to enable: " + ERROR_PERSIST_FAILED_ENABLE);
-            m_ignorePersist = true;
-            m_persistCb->setChecked(false);
-            m_ignorePersist = false;
-        }
+        PrivOps::instance()->enableService(std::move(onDone));
     } else {
         emit logMessage("Disabling auto-start on boot...");
-        if (priv_ops::disableService())
-            emit logMessage("Disabled \u2014 boot stays on EEVDF");
-        else {
-            emit logMessage("Failed to disable: " + ERROR_PERSIST_FAILED_DISABLE);
-            m_ignorePersist = true;
-            m_persistCb->setChecked(true);
-            m_ignorePersist = false;
-        }
+        PrivOps::instance()->disableService(std::move(onDone));
     }
 }

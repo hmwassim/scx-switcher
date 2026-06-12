@@ -30,6 +30,7 @@ private:
     void buildUi();
     void buildSetupMode();
     void buildNormalMode();
+    void buildReferenceTab();
     QWidget *buildUnsupportedPage();
     void checkKernelAndBuildUi();
     void log(const QString &msg);
@@ -54,5 +55,6 @@ private:
     int m_marqueeOffset = 0;
     QString m_marqueeText;
 
-    bool m_kernelSupported = true;
+    bool m_kernelChecked = false;
+    bool m_refreshing = false;
 };

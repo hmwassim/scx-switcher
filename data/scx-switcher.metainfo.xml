@@ -9,9 +9,9 @@
       sched-ext BPF schedulers on Debian 13+ (Trixie).
     </p>
     <p>
-      The installer handles the full build-from-source pipeline:
-      build dependencies, Rust bootstrap, building scx schedulers and
-      scx-loader/scxctl, systemd service, D-Bus, and PolKit configuration.
+      The installer downloads and installs pre-built scx-scheds and
+      scx-tools packages, builds the GUI from source, and configures
+      systemd, D-Bus, and PolKit integration.
     </p>
     <p>
       Once installed, the GUI lets you start, stop, and switch schedulers
@@ -20,7 +20,7 @@
     </p>
   </description>
   <launchable type="desktop-id">scx-switcher.desktop</launchable>
-  <url type="homepage">https://github.com/yourorg/scx-switcher</url>
+  <url type="homepage">https://github.com/hmwassim/scx-switcher</url>
   <screenshots>
     <screenshot type="default">
       <caption>Main window</caption>
