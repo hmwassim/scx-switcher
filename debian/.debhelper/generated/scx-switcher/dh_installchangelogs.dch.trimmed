@@ -1,4 +1,11 @@
-scx-switcher (1.0.0) unstable; urgency=medium
+scx-switcher (1.0.1) trixie; urgency=medium
+
+  * Remove polkit agent process check (works on any DE/WM now).
+  * Add pkexec to Depends.
+
+ -- SCX Switcher <scx-switcher@local>  Thu, 11 Jun 2026 04:44:00 +0000
+
+scx-switcher (1.0.0) trixie; urgency=medium
 
   * Initial release.
 

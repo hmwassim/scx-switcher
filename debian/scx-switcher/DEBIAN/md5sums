@@ -1,7 +1,0 @@
-098cb203bb0232a4ff2dc1b326367746  usr/bin/scx-switcher
-9aa4642bdc0ab3b6cb77933ea9f48710  usr/share/applications/scx-switcher.desktop
-f5693b4e9e6ac5aeb289690f6370337c  usr/share/doc/scx-switcher/changelog.gz
-48e4f423eaaa4d2415ad5449eaf3b0a7  usr/share/icons/hicolor/scalable/apps/scx-switcher.svg
-5ad37f078324db6e37f81f60a45f866a  usr/share/metainfo/scx-switcher.metainfo.xml
-0401c38951982aa3c11b6befb2bb3b1e  usr/share/polkit-1/actions/com.scx-switcher.policy
-c6ee7ad9a674c279e333d3a59da25de5  usr/share/scx-switcher/scx_loader-kernel-check.conf

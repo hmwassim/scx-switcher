@@ -121,7 +121,7 @@ else
 
     info "Installing build + runtime packages..."
     sudo apt-get install -y \
-        qt6-base-dev libgl-dev cmake g++ polkitd curl \
+        qt6-base-dev libgl-dev cmake g++ polkitd pkexec curl \
         || fail "apt install failed"
 
     step_completed "deps"

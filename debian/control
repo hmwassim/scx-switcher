@@ -12,8 +12,9 @@ Package: scx-switcher
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
-         polkitd,
-         scx-scheds (>= 1.1.0),
+          polkitd,
+          pkexec,
+          scx-scheds (>= 1.1.0),
          scx-tools (>= 1.1.0),
 Description: Qt6 GUI for managing sched-ext BPF schedulers on Debian 13+
  SCX Switcher is a Qt6 GUI that lets you install, switch, and monitor

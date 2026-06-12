@@ -26,21 +26,7 @@ static bool runPrivileged(const QStringList &args, QString *output = nullptr) {
 }
 
 bool isPolkitAgentRunning() {
-    QProcess ps;
-    ps.start("ps", {"-e", "--no-headers", "-o", "comm"});
-    if (!ps.waitForFinished(5000))
-        return true;
-    QString out = QString::fromUtf8(ps.readAllStandardOutput());
-    const QStringList lines = out.split('\n', Qt::SkipEmptyParts);
-    for (const auto &line : lines) {
-        QString name = line.trimmed();
-        if (name.isEmpty()) continue;
-        if (name == "polkitd") continue;
-        if (name.contains("polkit", Qt::CaseInsensitive) ||
-            name.contains("policykit", Qt::CaseInsensitive))
-            return true;
-    }
-    return false;
+    return true;
 }
 
 bool startScheduler(const QString &sched, const QString &mode) {
