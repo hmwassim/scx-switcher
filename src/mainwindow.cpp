@@ -363,14 +363,21 @@ void MainWindow::buildUnsupportedPage() {
     auto *page = new QWidget;
     auto *l    = new QVBoxLayout(page);
     l->setAlignment(Qt::AlignCenter);
-    l->setSpacing(12);
+
+    auto *frame = new QFrame;
+    frame->setObjectName("errorCard");
+    frame->setStyleSheet(
+        "#errorCard { border: 1px solid #333;"
+        "  border-radius: 6px; padding: 16px; }");
+    auto *fl = new QVBoxLayout(frame);
+    fl->setSpacing(10);
 
     auto *icon = new QLabel("\u26a0\ufe0f");
     QFont if2 = icon->font();
-    if2.setPointSize(32);
+    if2.setPointSize(28);
     icon->setFont(if2);
     icon->setAlignment(Qt::AlignCenter);
-    l->addWidget(icon);
+    fl->addWidget(icon);
 
     auto *title = new QLabel("Kernel does not support sched_ext");
     QFont tf = title->font();
@@ -378,19 +385,19 @@ void MainWindow::buildUnsupportedPage() {
     tf.setBold(true);
     title->setFont(tf);
     title->setAlignment(Qt::AlignCenter);
-    l->addWidget(title);
+    fl->addWidget(title);
 
     auto *sub = new QLabel("A Linux 6.12+ kernel with CONFIG_SCHED_CLASS_EXT is required.");
     sub->setAlignment(Qt::AlignCenter);
     sub->setStyleSheet("color: #999;");
-    l->addWidget(sub);
+    fl->addWidget(sub);
 
     auto *hint = new QLabel("Install a supported kernel on Debian 13 Trixie:");
     hint->setAlignment(Qt::AlignCenter);
-    hint->setStyleSheet("color: #ccc; margin-top: 8px;");
-    l->addWidget(hint);
+    hint->setStyleSheet("color: #ccc;");
+    fl->addWidget(hint);
 
-    const QString cmd = "sudo apt install linux-image-amd64 linux-headers-amd64";
+    const QString cmd = "sudo apt install -t trixie-backports linux-image-amd64 linux-headers-amd64";
     auto *cmdEdit = new QLineEdit(cmd);
     cmdEdit->setReadOnly(true);
     cmdEdit->setAlignment(Qt::AlignCenter);
@@ -400,13 +407,14 @@ void MainWindow::buildUnsupportedPage() {
         "padding: 6px 10px; font-family: monospace; font-size: 11px; }");
     QFontMetrics fm(cmdEdit->font());
     cmdEdit->setMinimumWidth(fm.horizontalAdvance(cmd) + 32);
-    l->addWidget(cmdEdit);
+    fl->addWidget(cmdEdit);
 
     auto *note = new QLabel("Reboot after installing to activate the new kernel.");
     note->setAlignment(Qt::AlignCenter);
-    note->setStyleSheet("color: #666; font-size: 10px; margin-top: 4px;");
-    l->addWidget(note);
+    note->setStyleSheet("color: #666; font-size: 10px;");
+    fl->addWidget(note);
 
+    l->addWidget(frame);
     m_contentStack->addWidget(page);
     m_contentStack->setCurrentWidget(page);
 }
@@ -415,14 +423,21 @@ void MainWindow::buildSetupPage() {
     auto *page = new QWidget;
     auto *l    = new QVBoxLayout(page);
     l->setAlignment(Qt::AlignCenter);
-    l->setSpacing(12);
 
-    auto *icon = new QLabel("⚠️");
+    auto *frame = new QFrame;
+    frame->setObjectName("errorCard");
+    frame->setStyleSheet(
+        "#errorCard { border: 1px solid #333;"
+        "  border-radius: 6px; padding: 16px; }");
+    auto *fl = new QVBoxLayout(frame);
+    fl->setSpacing(10);
+
+    auto *icon = new QLabel("\u26a0\ufe0f");
     QFont if2 = icon->font();
-    if2.setPointSize(32);
+    if2.setPointSize(28);
     icon->setFont(if2);
     icon->setAlignment(Qt::AlignCenter);
-    l->addWidget(icon);
+    fl->addWidget(icon);
 
     auto *title = new QLabel("scxctl not found");
     QFont tf = title->font();
@@ -430,13 +445,13 @@ void MainWindow::buildSetupPage() {
     tf.setBold(true);
     title->setFont(tf);
     title->setAlignment(Qt::AlignCenter);
-    l->addWidget(title);
+    fl->addWidget(title);
 
     auto *hint = new QLabel(
         "Install <b>scx-scheds</b> and <b>scx-tools</b> from the Debian repositories:");
     hint->setAlignment(Qt::AlignCenter);
     hint->setStyleSheet("color: #ccc;");
-    l->addWidget(hint);
+    fl->addWidget(hint);
 
     const QString cmd = "sudo apt install scx-scheds scx-tools";
     auto *cmdEdit = new QLineEdit(cmd);
@@ -448,7 +463,7 @@ void MainWindow::buildSetupPage() {
         "padding: 6px 10px; font-family: monospace; font-size: 11px; }");
     QFontMetrics fm(cmdEdit->font());
     cmdEdit->setMinimumWidth(fm.horizontalAdvance(cmd) + 32);
-    l->addWidget(cmdEdit);
+    fl->addWidget(cmdEdit);
 
     auto *btn = new QPushButton("Exit");
     btn->setMaximumWidth(90);
@@ -456,8 +471,9 @@ void MainWindow::buildSetupPage() {
     auto *br = new QHBoxLayout;
     br->setAlignment(Qt::AlignCenter);
     br->addWidget(btn);
-    l->addLayout(br);
+    fl->addLayout(br);
 
+    l->addWidget(frame);
     m_contentStack->addWidget(page);
     m_contentStack->setCurrentWidget(page);
 }
