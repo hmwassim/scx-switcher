@@ -211,6 +211,8 @@ void ControlTab::onPersistToggled(bool checked) {
         return;
     }
 
+    setControlsEnabled(false);
+
     auto onDone = [this, checked](bool ok, const QString &msg) {
         if (ok) {
             emit log(checked
@@ -222,6 +224,7 @@ void ControlTab::onPersistToggled(bool checked) {
             const QSignalBlocker blocker(m_persistCb);
             m_persistCb->setChecked(!checked);
         }
+        setControlsEnabled(true);
     };
 
     if (checked) {
