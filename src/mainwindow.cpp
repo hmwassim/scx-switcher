@@ -113,6 +113,11 @@ void MainWindow::buildShell() {
     connect(m_stopBtn, &QPushButton::clicked, this, &MainWindow::onStopClicked);
     hl->addWidget(m_stopBtn);
 
+    auto *quitBtn = new QPushButton("Quit");
+    quitBtn->setMinimumWidth(72);
+    connect(quitBtn, &QPushButton::clicked, qApp, &QApplication::quit);
+    hl->addWidget(quitBtn);
+
     root->addWidget(header);
 
     m_tabs = new QTabWidget;
@@ -167,20 +172,22 @@ void MainWindow::buildNormalMode() {
             });
     m_tabs->addTab(m_ctrlTab, "Control");
 
-    // System tray
-    m_tray     = new QSystemTrayIcon(trayIcon(QColor("#888888")), this);
-    m_trayMenu = new QMenu;
-    m_trayMenu->addAction("Show", this, [this] { show(); raise(); activateWindow(); });
-    m_trayMenu->addSeparator();
-    m_trayMenu->addAction("Quit", this, [] { QApplication::quit(); });
-    m_tray->setContextMenu(m_trayMenu);
-    m_tray->setToolTip(APP_NAME);
-    m_tray->show();
-    connect(m_tray, &QSystemTrayIcon::activated, this,
-        [this](QSystemTrayIcon::ActivationReason r) {
-            if (r == QSystemTrayIcon::DoubleClick)
-                { show(); raise(); activateWindow(); }
-        });
+    // System tray (only if the desktop environment supports it)
+    if (QSystemTrayIcon::isSystemTrayAvailable()) {
+        m_tray     = new QSystemTrayIcon(trayIcon(QColor("#888888")), this);
+        m_trayMenu = new QMenu;
+        m_trayMenu->addAction("Show", this, [this] { show(); raise(); activateWindow(); });
+        m_trayMenu->addSeparator();
+        m_trayMenu->addAction("Quit", this, [] { QApplication::quit(); });
+        m_tray->setContextMenu(m_trayMenu);
+        m_tray->setToolTip(APP_NAME);
+        m_tray->show();
+        connect(m_tray, &QSystemTrayIcon::activated, this,
+            [this](QSystemTrayIcon::ActivationReason r) {
+                if (r == QSystemTrayIcon::DoubleClick)
+                    { show(); raise(); activateWindow(); }
+            });
+    }
 
     appendLog(QString("%1 v%2 ready").arg(APP_NAME, APP_VERSION));
 
@@ -419,7 +426,7 @@ void MainWindow::onStopClicked() {
 // ── Window close ──────────────────────────────────────────────────────────────
 
 void MainWindow::closeEvent(QCloseEvent *event) {
-    if (m_tray && m_tray->isVisible()) {
+    if (m_tray && m_tray->isVisible() && QSystemTrayIcon::isSystemTrayAvailable()) {
         hide();
         event->ignore();
     } else {
