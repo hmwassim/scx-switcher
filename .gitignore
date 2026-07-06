@@ -1,4 +1,5 @@
-/target/
+build/
+obj-*/
 debian/.debhelper/
 debian/files
 debian/*.substvars
@@ -15,3 +16,4 @@ debian/scx-switcher/
 *.dsc
 *.tar.xz
 *.tar.gz
+
