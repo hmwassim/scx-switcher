@@ -158,8 +158,13 @@ void MainWindow::onKernelResult(bool supported, const QString &detail) {
 
 void MainWindow::buildNormalMode() {
     m_ctrlTab = new ControlTab;
-    connect(m_ctrlTab, &ControlTab::log,           this, &MainWindow::appendLog);
-    connect(m_ctrlTab, &ControlTab::statusChanged, this, &MainWindow::refreshStatus);
+    connect(m_ctrlTab, &ControlTab::log,                this, &MainWindow::appendLog);
+    connect(m_ctrlTab, &ControlTab::statusChanged,      this, &MainWindow::refreshStatus);
+    connect(m_ctrlTab, &ControlTab::operationInProgress, this,
+            [this](bool inFlight) {
+                m_opInFlight = inFlight;
+                m_stopBtn->setEnabled(m_schedActive && !m_opInFlight);
+            });
     m_tabs->addTab(m_ctrlTab, "Control");
 
     // System tray
@@ -211,18 +216,18 @@ void MainWindow::refreshStatus() {
 }
 
 void MainWindow::updateStatusBar(bool active, const QString &name, const QString &mode) {
+    m_schedActive = active;
     if (active) {
         m_dot->setStyleSheet("color: #00cc00;");
         m_statusText->setText(
             QString("Running: %1 (%2)").arg(humanizeSched(name), humanizeMode(mode)));
-        m_stopBtn->setEnabled(true);
         setTray(true, name);
     } else {
         m_dot->setStyleSheet("color: #cc0000;");
         m_statusText->setText("EEVDF (default)");
-        m_stopBtn->setEnabled(false);
         setTray(false);
     }
+    m_stopBtn->setEnabled(m_schedActive && !m_opInFlight);
 }
 
 void MainWindow::setTray(bool active, const QString &schedName) {

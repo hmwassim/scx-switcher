@@ -58,4 +58,6 @@ private:
     QMetaObject::Connection m_statusConn;
 
     bool m_kernelOk                      = false;
+    bool m_schedActive                   = false;
+    bool m_opInFlight                    = false;
 };

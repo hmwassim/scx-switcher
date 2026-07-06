@@ -15,6 +15,7 @@ public:
 signals:
     void log(const QString &msg);
     void statusChanged();
+    void operationInProgress(bool inFlight);
 
 private slots:
     void onSchedChanged();

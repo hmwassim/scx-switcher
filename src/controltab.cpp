@@ -243,4 +243,5 @@ void ControlTab::setControlsEnabled(bool enabled) {
     m_modeCombo->setEnabled(enabled);
     m_startBtn->setEnabled(enabled);
     m_persistCb->setEnabled(enabled);
+    emit operationInProgress(!enabled);
 }
