@@ -2,8 +2,8 @@
   <defs>
     <!-- Chip body: subtle blue gradient, lighter toward top for a lit edge -->
     <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#60a5fa"/>
-      <stop offset="1" stop-color="#2563eb"/>
+      <stop offset="0" stop-color="#5fc060"/>
+      <stop offset="1" stop-color="#2f8f42"/>
     </linearGradient>
 
     <!-- Die: cool dark gray, reads as a recessed cavity -->

@@ -3,6 +3,7 @@
 #include <QProcess>
 #include <QDir>
 #include <QFile>
+#include <QSaveFile>
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonArray>
@@ -213,11 +214,9 @@ void ScxUtils::saveState(const QString &sched, const QString &mode) {
     const QString path = statePath();
     QDir().mkpath(QFileInfo(path).absolutePath());
 
-    // Use atomic write: temp file + rename to avoid corruption on crash
-    const QString tmpPath = path + ".tmp";
-    QFile f(tmpPath);
+    QSaveFile f(path);
     if (!f.open(QIODevice::WriteOnly)) {
-        qWarning("saveState: cannot create %s", qPrintable(tmpPath));
+        qWarning("saveState: cannot open %s", qPrintable(path));
         return;
     }
 
@@ -225,14 +224,11 @@ void ScxUtils::saveState(const QString &sched, const QString &mode) {
     obj["scheduler"] = sched;
     obj["mode"]      = mode;
 
-    const QByteArray data = QJsonDocument(obj).toJson();
-    f.write(data);
-    f.close();
+    f.write(QJsonDocument(obj).toJson());
 
-    // Atomic rename on same filesystem
-    if (!QFile::rename(tmpPath, path)) {
-        qWarning("saveState: cannot rename %s to %s", qPrintable(tmpPath), qPrintable(path));
-        QFile::remove(tmpPath);
+    if (!f.commit()) {
+        qWarning("saveState: commit failed for %s", qPrintable(path));
+        f.cancelWriting();
     }
 }
 
