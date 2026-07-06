@@ -16,6 +16,7 @@ signals:
     void log(const QString &msg);
     void statusChanged();
     void operationInProgress(bool inFlight);
+    void schedulerSelected(const QString &bare);
 
 private slots:
     void onSchedChanged();

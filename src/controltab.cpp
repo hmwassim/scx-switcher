@@ -14,12 +14,11 @@
 
 ControlTab::ControlTab(QWidget *parent) : QWidget(parent) {
     auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(12, 12, 12, 12);
-    root->setSpacing(10);
+    root->setContentsMargins(0, 0, 0, 0);
+    root->setSpacing(8);
 
-    auto *selGroup = new QGroupBox("Scheduler");
-    auto *grid     = new QGridLayout(selGroup);
-    grid->setSpacing(8);
+    auto *grid = new QGridLayout;
+    grid->setSpacing(6);
     grid->setColumnStretch(1, 1);
 
     grid->addWidget(new QLabel("Scheduler:"), 0, 0);
@@ -32,21 +31,21 @@ ControlTab::ControlTab(QWidget *parent) : QWidget(parent) {
     m_modeCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     grid->addWidget(m_modeCombo, 1, 1);
 
-    root->addWidget(selGroup);
+    root->addLayout(grid);
 
     auto *btnRow = new QHBoxLayout;
-    m_startBtn   = new QPushButton("Start / Switch");
-    m_refreshBtn = new QPushButton("Refresh List");
+    m_startBtn   = new QPushButton("Apply");
+    m_startBtn->setMinimumWidth(120);
     m_startBtn->setMinimumHeight(34);
+    m_refreshBtn = new QPushButton("Refresh");
     m_refreshBtn->setMinimumHeight(34);
     btnRow->addWidget(m_startBtn);
     btnRow->addWidget(m_refreshBtn);
+    btnRow->addStretch();
     root->addLayout(btnRow);
 
-    m_persistCb = new QCheckBox("Auto-apply last scheduler at boot");
+    m_persistCb = new QCheckBox("Make default at boot");
     root->addWidget(m_persistCb);
-
-    root->addStretch();
 
     connect(m_schedCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &ControlTab::onSchedChanged);
@@ -101,6 +100,8 @@ void ControlTab::refreshList() {
 void ControlTab::onSchedChanged() {
     const QString bare = m_schedCombo->currentData().toString();
     if (bare.isEmpty()) return;
+
+    emit schedulerSelected(bare);
 
     static QHash<QString, QStringList> modeMap;
     if (modeMap.isEmpty()) {

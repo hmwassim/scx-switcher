@@ -4,7 +4,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QTextEdit>
-#include <QTabWidget>
+#include <QStackedWidget>
 #include <QTimer>
 #include <QSystemTrayIcon>
 #include <QCloseEvent>
@@ -13,6 +13,7 @@
 #include "config.h"
 
 class ControlTab;
+class QToolButton;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -35,20 +36,33 @@ private:
     void buildNormalMode();
     void buildUnsupportedPage();
     void buildSetupPage();
-    void buildReferenceTab(const QStringList &installed);
 
     void appendLog(const QString &msg);
     void updateStatusBar(bool active, const QString &name, const QString &mode);
     void setTray(bool active, const QString &schedName = {});
+    void updateSchedInfo(const QString &bare);
+    void toggleLog();
 
     static QIcon trayIcon(const QColor &color);
 
+    // Status card
     QLabel      *m_dot        = nullptr;
     QLabel      *m_statusText = nullptr;
     QPushButton *m_stopBtn    = nullptr;
 
-    QTabWidget  *m_tabs       = nullptr;
-    ControlTab  *m_ctrlTab    = nullptr;
+    // Content stack
+    QStackedWidget *m_contentStack = nullptr;
+    QWidget        *m_normalPage   = nullptr;
+    ControlTab     *m_ctrlTab      = nullptr;
+
+    // Scheduler info section
+    QLabel *m_infoTitle  = nullptr;
+    QLabel *m_infoCat    = nullptr;
+    QLabel *m_infoDesc   = nullptr;
+    QLabel *m_infoModes  = nullptr;
+
+    // Collapsible log
+    QToolButton *m_logToggle  = nullptr;
     QTextEdit   *m_log        = nullptr;
 
     QSystemTrayIcon *m_tray     = nullptr;
@@ -60,4 +74,5 @@ private:
     bool m_kernelOk                      = false;
     bool m_schedActive                   = false;
     bool m_opInFlight                    = false;
+    bool m_logVisible                    = true;
 };
