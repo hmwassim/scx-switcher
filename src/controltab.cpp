@@ -154,7 +154,15 @@ void ControlTab::onStartSwitch() {
                     ScxUtils::saveState(sched, mode);
                     emit log(QString("Now running %1 (%2)")
                              .arg(humanizeSched(sched), humanizeMode(mode)));
-                    PrivOps::get()->writeConfig(sched, mode);
+                    if (m_persistCb->isChecked()) {
+                        PrivOps::get()->writeConfig(sched, mode,
+                            [this](bool ok2, const QString &msg2) {
+                                emit log(ok2
+                                    ? "Auto-start config saved"
+                                    : QString("Config write failed: %1")
+                                        .arg(msg2.isEmpty() ? "unknown error" : msg2));
+                            });
+                    }
                 } else {
                     emit log(msg.isEmpty() ? ERR_SWITCH_FAILED
                                             : QString("Failed: %1").arg(msg));
