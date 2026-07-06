@@ -41,7 +41,7 @@ private:
     void updateStatusBar(bool active, const QString &name, const QString &mode);
     void setTray(bool active, const QString &schedName = {});
 
-    static QIcon dotIcon(const QColor &color);
+    static QIcon trayIcon(const QColor &color);
 
     QLabel      *m_dot        = nullptr;
     QLabel      *m_statusText = nullptr;

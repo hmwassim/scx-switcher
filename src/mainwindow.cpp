@@ -23,14 +23,34 @@ static constexpr int STATUS_POLL_INTERVAL_MS = 3000;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-QIcon MainWindow::dotIcon(const QColor &color) {
+QIcon MainWindow::trayIcon(const QColor &color) {
     QPixmap pm(16, 16);
     pm.fill(Qt::transparent);
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing);
-    p.setBrush(color);
+
+    QPen pen(color, 1.0);
+    p.setPen(pen);
+    p.setBrush(Qt::NoBrush);
+    p.drawRoundedRect(QRectF(3.5, 3.5, 9, 9), 1.5, 1.5);
+
     p.setPen(Qt::NoPen);
-    p.drawEllipse(2, 2, 12, 12);
+    p.setBrush(color);
+
+    constexpr qreal pw = 1.5, ph = 1.5;
+    // Top
+    p.drawRect(QRectF(5.5, 1,   pw, ph));
+    p.drawRect(QRectF(9,   1,   pw, ph));
+    // Bottom
+    p.drawRect(QRectF(5.5, 13.5, pw, ph));
+    p.drawRect(QRectF(9,   13.5, pw, ph));
+    // Left
+    p.drawRect(QRectF(1,   5.5,  ph, pw));
+    p.drawRect(QRectF(1,   9,    ph, pw));
+    // Right
+    p.drawRect(QRectF(13.5, 5.5,  ph, pw));
+    p.drawRect(QRectF(13.5, 9,    ph, pw));
+
     return QIcon(pm);
 }
 
@@ -143,7 +163,7 @@ void MainWindow::buildNormalMode() {
     m_tabs->addTab(m_ctrlTab, "Control");
 
     // System tray
-    m_tray     = new QSystemTrayIcon(dotIcon(QColor("#888888")), this);
+    m_tray     = new QSystemTrayIcon(trayIcon(QColor("#888888")), this);
     m_trayMenu = new QMenu;
     m_trayMenu->addAction("Show", this, [this] { show(); raise(); activateWindow(); });
     m_trayMenu->addSeparator();
@@ -208,10 +228,10 @@ void MainWindow::updateStatusBar(bool active, const QString &name, const QString
 void MainWindow::setTray(bool active, const QString &schedName) {
     if (!m_tray) return;
     if (active) {
-        m_tray->setIcon(dotIcon(QColor("#00cc00")));
+        m_tray->setIcon(trayIcon(QColor("#00cc00")));
         m_tray->setToolTip(QString("SCX: %1").arg(humanizeSched(schedName)));
     } else {
-        m_tray->setIcon(dotIcon(QColor("#cc0000")));
+        m_tray->setIcon(trayIcon(QColor("#cc0000")));
         m_tray->setToolTip("SCX: none (EEVDF)");
     }
 }
