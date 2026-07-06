@@ -18,8 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2026-06-13
 
 ### Fixed
-- Removed unnecessary Qt6::Network dependency (only QLocalServer needed)
-- Fixed marquee scrolling speed in MainWindow
+- Removed broken marquee (replaced with plain setText)
 
 ### Changed
 - Updated cmake configuration to use Release build type by default

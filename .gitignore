@@ -3,7 +3,8 @@ obj-*/
 debian/.debhelper/
 debian/files
 debian/*.substvars
-debian/*.debhelper
+debian/*.debhelper.log
+debian/debhelper-build-stamp
 debian/scx-switcher/
 *.swp
 *.swo
