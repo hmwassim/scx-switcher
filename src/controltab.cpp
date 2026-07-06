@@ -149,14 +149,15 @@ void ControlTab::onStartSwitch() {
                 return;
             }
 
-            auto onDone = [this, sched, mode](bool ok, const QString &) {
+            auto onDone = [this, sched, mode](bool ok, const QString &msg) {
                 if (ok) {
                     ScxUtils::saveState(sched, mode);
                     emit log(QString("Now running %1 (%2)")
                              .arg(humanizeSched(sched), humanizeMode(mode)));
                     PrivOps::get()->writeConfig(sched, mode);
                 } else {
-                    emit log(QString("Failed - %1").arg(ERR_SWITCH_FAILED));
+                    emit log(msg.isEmpty() ? ERR_SWITCH_FAILED
+                                            : QString("Failed: %1").arg(msg));
                 }
                 setControlsEnabled(true);
                 emit statusChanged();
@@ -185,8 +186,10 @@ void ControlTab::onStop() {
     emit log("Stopping scheduler\xe2\x80\xa6");
     setControlsEnabled(false);
 
-    PrivOps::get()->stopScheduler([this](bool ok, const QString &) {
-        emit log(ok ? "Stopped \xe2\x80\x94 back to EEVDF" : ERR_STOP_FAILED);
+    PrivOps::get()->stopScheduler([this](bool ok, const QString &msg) {
+        emit log(ok ? "Stopped \xe2\x80\x94 back to EEVDF"
+                    : (msg.isEmpty() ? ERR_STOP_FAILED
+                                     : QString("Failed: %1").arg(msg)));
         setControlsEnabled(true);
         emit statusChanged();
     });
@@ -200,13 +203,14 @@ void ControlTab::onPersistToggled(bool checked) {
         return;
     }
 
-    auto onDone = [this, checked](bool ok, const QString &) {
+    auto onDone = [this, checked](bool ok, const QString &msg) {
         if (ok) {
             emit log(checked
                 ? "Auto-start enabled \xe2\x80\x94 scheduler will apply at next boot"
                 : "Auto-start disabled");
         } else {
-            emit log(checked ? ERR_PERSIST_ENABLE : ERR_PERSIST_DISABLE);
+            const char *canned = checked ? ERR_PERSIST_ENABLE : ERR_PERSIST_DISABLE;
+            emit log(msg.isEmpty() ? canned : QString("Failed: %1").arg(msg));
             const QSignalBlocker blocker(m_persistCb);
             m_persistCb->setChecked(!checked);
         }
