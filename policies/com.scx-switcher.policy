@@ -26,7 +26,7 @@
       <allow_inactive>auth_admin_keep</allow_inactive>
       <allow_active>auth_admin_keep</allow_active>
     </defaults>
-    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/systemctl</annotate>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/scx-switcher/toggle-autostart</annotate>
   </action>
 
   <action id="com.scx-switcher.write-config">
@@ -37,6 +37,6 @@
       <allow_inactive>auth_admin_keep</allow_inactive>
       <allow_active>auth_admin_keep</allow_active>
     </defaults>
-    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/tee</annotate>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/scx-switcher/write-config</annotate>
   </action>
 </policyconfig>

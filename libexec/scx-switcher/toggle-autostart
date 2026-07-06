@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+case "${1:-}" in
+    enable)
+        exec systemctl enable --now scx_loader.service
+        ;;
+    disable)
+        exec systemctl disable --now scx_loader.service
+        ;;
+    *)
+        echo "Usage: $0 {enable|disable}" >&2
+        exit 1
+        ;;
+esac

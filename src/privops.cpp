@@ -4,11 +4,10 @@
 #include <QHash>
 #include <QStandardPaths>
 
-static constexpr const char *SCXCTL    = "scxctl";
-static constexpr const char *SYSTEMCTL = "systemctl";
-static constexpr const char *PKEXEC    = "pkexec";
-static constexpr const char *SERVICE   = "scx_loader.service";
-static constexpr const char *CFG_PATH  = "/etc/scx_loader/config.toml";
+static constexpr const char *SCXCTL            = "scxctl";
+static constexpr const char *PKEXEC            = "pkexec";
+static constexpr const char *TOGGLE_AUTOSTART  = "/usr/libexec/scx-switcher/toggle-autostart";
+static constexpr const char *WRITE_CONFIG      = "/usr/libexec/scx-switcher/write-config";
 
 static constexpr int OP_TIMEOUT_MS = 30000;
 
@@ -152,11 +151,11 @@ void PrivOps::stopScheduler(Callback cb) {
 }
 
 void PrivOps::enableService(Callback cb) {
-    run({SYSTEMCTL, "enable", "--now", SERVICE}, std::move(cb));
+    run({TOGGLE_AUTOSTART, "enable"}, std::move(cb));
 }
 
 void PrivOps::disableService(Callback cb) {
-    run({SYSTEMCTL, "disable", "--now", SERVICE}, std::move(cb));
+    run({TOGGLE_AUTOSTART, "disable"}, std::move(cb));
 }
 
 void PrivOps::writeConfig(const QString &sched, const QString &mode, Callback cb) {
@@ -173,5 +172,5 @@ void PrivOps::writeConfig(const QString &sched, const QString &mode, Callback cb
     m_callback = std::move(cb);
     m_timeout->start(OP_TIMEOUT_MS);
     // Content is written to stdin in the QProcess::started handler.
-    m_proc->start(PKEXEC, QStringList{"tee", CFG_PATH});
+    m_proc->start(PKEXEC, QStringList{WRITE_CONFIG});
 }
