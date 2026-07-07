@@ -1,14 +1,14 @@
 #pragma once
 
-#include <QMainWindow>
-#include <QLabel>
-#include <QPushButton>
-#include <QTextEdit>
-#include <QStackedWidget>
-#include <QTimer>
-#include <QSystemTrayIcon>
 #include <QCloseEvent>
+#include <QLabel>
+#include <QMainWindow>
 #include <QMenu>
+#include <QPushButton>
+#include <QStackedWidget>
+#include <QSystemTrayIcon>
+#include <QTextEdit>
+#include <QTimer>
 
 #include "config.h"
 
@@ -17,20 +17,20 @@ class QToolButton;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
-public:
+    public:
     explicit MainWindow(QWidget *parent = nullptr);
 
-    static constexpr const char *APP_NAME    = "SCX Switcher";
+    static constexpr const char *APP_NAME = "SCX Switcher";
     static constexpr const char *APP_VERSION = APP_VERSION_STR;
 
-protected:
+    protected:
     void closeEvent(QCloseEvent *event) override;
 
-private slots:
+    private slots:
     void refreshStatus();
     void onStopClicked();
 
-private:
+    private:
     void buildShell();
     void onKernelResult(bool supported, const QString &detail);
     void buildNormalMode();
@@ -46,33 +46,33 @@ private:
     static QIcon trayIcon(const QColor &color);
 
     // Status card
-    QLabel      *m_dot        = nullptr;
-    QLabel      *m_statusText = nullptr;
-    QPushButton *m_stopBtn    = nullptr;
+    QLabel *m_dot = nullptr;
+    QLabel *m_statusText = nullptr;
+    QPushButton *m_stopBtn = nullptr;
 
     // Content stack
     QStackedWidget *m_contentStack = nullptr;
-    QWidget        *m_normalPage   = nullptr;
-    ControlTab     *m_ctrlTab      = nullptr;
+    QWidget *m_normalPage = nullptr;
+    ControlTab *m_ctrlTab = nullptr;
 
     // Scheduler info section
-    QLabel *m_infoTitle  = nullptr;
-    QLabel *m_infoCat    = nullptr;
-    QLabel *m_infoDesc   = nullptr;
-    QLabel *m_infoModes  = nullptr;
+    QLabel *m_infoTitle = nullptr;
+    QLabel *m_infoCat = nullptr;
+    QLabel *m_infoDesc = nullptr;
+    QLabel *m_infoModes = nullptr;
 
     // Collapsible log
-    QToolButton *m_logToggle  = nullptr;
-    QTextEdit   *m_log        = nullptr;
+    QToolButton *m_logToggle = nullptr;
+    QTextEdit *m_log = nullptr;
 
-    QSystemTrayIcon *m_tray     = nullptr;
-    QMenu           *m_trayMenu = nullptr;
+    QSystemTrayIcon *m_tray = nullptr;
+    QMenu *m_trayMenu = nullptr;
 
-    QTimer *m_pollTimer                  = nullptr;
+    QTimer *m_pollTimer = nullptr;
     QMetaObject::Connection m_statusConn;
 
-    bool m_kernelOk                      = false;
-    bool m_schedActive                   = false;
-    bool m_opInFlight                    = false;
-    bool m_logVisible                    = true;
+    bool m_kernelOk = false;
+    bool m_schedActive = false;
+    bool m_opInFlight = false;
+    bool m_logVisible = true;
 };

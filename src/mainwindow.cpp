@@ -1,25 +1,25 @@
 #include "mainwindow.h"
-#include "controltab.h"
-#include "scxutils.h"
-#include "privops.h"
 #include "config.h"
+#include "controltab.h"
+#include "privops.h"
+#include "scxutils.h"
 
 #include <QApplication>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QFrame>
-#include <QGroupBox>
-#include <QScrollArea>
-#include <QScrollBar>
-#include <QLineEdit>
+#include <QDateTime>
 #include <QFont>
 #include <QFontMetrics>
-#include <QDateTime>
+#include <QFrame>
+#include <QGroupBox>
+#include <QHBoxLayout>
 #include <QIcon>
-#include <QPixmap>
+#include <QLineEdit>
 #include <QPainter>
+#include <QPixmap>
+#include <QScrollArea>
+#include <QScrollBar>
 #include <QStackedWidget>
 #include <QToolButton>
+#include <QVBoxLayout>
 #include <memory>
 
 static constexpr int STATUS_POLL_INTERVAL_MS = 3000;
@@ -42,17 +42,17 @@ QIcon MainWindow::trayIcon(const QColor &color) {
 
     constexpr qreal pw = 1.5, ph = 1.5;
     // Top
-    p.drawRect(QRectF(5.5, 1,   pw, ph));
-    p.drawRect(QRectF(9,   1,   pw, ph));
+    p.drawRect(QRectF(5.5, 1, pw, ph));
+    p.drawRect(QRectF(9, 1, pw, ph));
     // Bottom
     p.drawRect(QRectF(5.5, 13.5, pw, ph));
-    p.drawRect(QRectF(9,   13.5, pw, ph));
+    p.drawRect(QRectF(9, 13.5, pw, ph));
     // Left
-    p.drawRect(QRectF(1,   5.5,  ph, pw));
-    p.drawRect(QRectF(1,   9,    ph, pw));
+    p.drawRect(QRectF(1, 5.5, ph, pw));
+    p.drawRect(QRectF(1, 9, ph, pw));
     // Right
-    p.drawRect(QRectF(13.5, 5.5,  ph, pw));
-    p.drawRect(QRectF(13.5, 9,    ph, pw));
+    p.drawRect(QRectF(13.5, 5.5, ph, pw));
+    p.drawRect(QRectF(13.5, 9, ph, pw));
 
     return QIcon(pm);
 }
@@ -66,19 +66,19 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     buildShell();
 
     auto *utils = ScxUtils::get();
-    auto  conn  = std::make_shared<QMetaObject::Connection>();
+    auto conn = std::make_shared<QMetaObject::Connection>();
     *conn = connect(utils, &ScxUtils::kernelChecked, this,
-        [this, conn](bool ok, const QString &detail) {
-            disconnect(*conn);
-            onKernelResult(ok, detail);
-        });
+                    [this, conn](bool ok, const QString &detail) {
+                        disconnect(*conn);
+                        onKernelResult(ok, detail);
+                    });
     utils->checkKernel();
 }
 
 // ── Shell ─────────────────────────────────────────────────────────────────────
 
 void MainWindow::buildShell() {
-    auto *cw   = new QWidget;
+    auto *cw = new QWidget;
     auto *root = new QVBoxLayout(cw);
     root->setContentsMargins(12, 10, 12, 10);
     root->setSpacing(0);
@@ -87,9 +87,8 @@ void MainWindow::buildShell() {
     // Status card
     auto *card = new QFrame;
     card->setObjectName("statusCard");
-    card->setStyleSheet(
-        "#statusCard { border: 1px solid #333;"
-        "  border-radius: 6px; padding: 0px; }");
+    card->setStyleSheet("#statusCard { border: 1px solid #333;"
+                        "  border-radius: 6px; padding: 0px; }");
     auto *cl = new QHBoxLayout(card);
     cl->setContentsMargins(12, 10, 12, 10);
     cl->setSpacing(10);
@@ -172,17 +171,16 @@ void MainWindow::buildNormalMode() {
     // ── Control section ────────────────────────────────────────────────────────
     auto *ctrlBox = new QGroupBox("Switch Scheduler");
     ctrlBox->setMinimumHeight(180);
-    auto *ctrlL   = new QVBoxLayout(ctrlBox);
+    auto *ctrlL = new QVBoxLayout(ctrlBox);
     ctrlL->setContentsMargins(10, 10, 10, 10);
 
     m_ctrlTab = new ControlTab;
-    connect(m_ctrlTab, &ControlTab::log,                this, &MainWindow::appendLog);
-    connect(m_ctrlTab, &ControlTab::statusChanged,      this, &MainWindow::refreshStatus);
-    connect(m_ctrlTab, &ControlTab::operationInProgress, this,
-            [this](bool inFlight) {
-                m_opInFlight = inFlight;
-                m_stopBtn->setEnabled(m_schedActive && !m_opInFlight);
-            });
+    connect(m_ctrlTab, &ControlTab::log, this, &MainWindow::appendLog);
+    connect(m_ctrlTab, &ControlTab::statusChanged, this, &MainWindow::refreshStatus);
+    connect(m_ctrlTab, &ControlTab::operationInProgress, this, [this](bool inFlight) {
+        m_opInFlight = inFlight;
+        m_stopBtn->setEnabled(m_schedActive && !m_opInFlight);
+    });
     connect(m_ctrlTab, &ControlTab::schedulerSelected, this, &MainWindow::updateSchedInfo);
     ctrlL->addWidget(m_ctrlTab);
     pageLayout->addWidget(ctrlBox);
@@ -190,9 +188,8 @@ void MainWindow::buildNormalMode() {
     // ── Scheduler info section ─────────────────────────────────────────────────
     auto *infoFrame = new QFrame;
     infoFrame->setObjectName("schedInfo");
-    infoFrame->setStyleSheet(
-        "#schedInfo { border: 1px solid #333;"
-        "  border-radius: 5px; padding: 0px; }");
+    infoFrame->setStyleSheet("#schedInfo { border: 1px solid #333;"
+                             "  border-radius: 5px; padding: 0px; }");
     auto *infoL = new QVBoxLayout(infoFrame);
     infoL->setContentsMargins(10, 8, 10, 8);
     infoL->setSpacing(3);
@@ -207,9 +204,8 @@ void MainWindow::buildNormalMode() {
     infoH->addStretch();
 
     m_infoCat = new QLabel;
-    m_infoCat->setStyleSheet(
-        "color: #88aaff; font-size: 10px; padding: 1px 6px;"
-        "border: 1px solid #446; border-radius: 3px;");
+    m_infoCat->setStyleSheet("color: #88aaff; font-size: 10px; padding: 1px 6px;"
+                             "border: 1px solid #446; border-radius: 3px;");
     infoH->addWidget(m_infoCat);
     infoL->addLayout(infoH);
 
@@ -265,19 +261,26 @@ void MainWindow::buildNormalMode() {
 
     // ── System tray ────────────────────────────────────────────────────────────
     if (QSystemTrayIcon::isSystemTrayAvailable()) {
-        m_tray     = new QSystemTrayIcon(trayIcon(QColor("#888888")), this);
+        m_tray = new QSystemTrayIcon(trayIcon(QColor("#888888")), this);
         m_trayMenu = new QMenu;
-        m_trayMenu->addAction("Show", this, [this] { show(); raise(); activateWindow(); });
+        m_trayMenu->addAction("Show", this, [this] {
+            show();
+            raise();
+            activateWindow();
+        });
         m_trayMenu->addSeparator();
         m_trayMenu->addAction("Quit", this, [] { QApplication::quit(); });
         m_tray->setContextMenu(m_trayMenu);
         m_tray->setToolTip(APP_NAME);
         m_tray->show();
         connect(m_tray, &QSystemTrayIcon::activated, this,
-            [this](QSystemTrayIcon::ActivationReason r) {
-                if (r == QSystemTrayIcon::DoubleClick)
-                    { show(); raise(); activateWindow(); }
-            });
+                [this](QSystemTrayIcon::ActivationReason r) {
+                    if (r == QSystemTrayIcon::DoubleClick) {
+                        show();
+                        raise();
+                        activateWindow();
+                    }
+                });
     }
 
     appendLog(QString("%1 v%2 ready").arg(APP_NAME, APP_VERSION));
@@ -289,18 +292,15 @@ void MainWindow::buildNormalMode() {
 
     // Poll for schedulers list (loads into combo, triggers info update on selection)
     auto *utils = ScxUtils::get();
-    auto  conn  = std::make_shared<QMetaObject::Connection>();
+    auto conn = std::make_shared<QMetaObject::Connection>();
     *conn = connect(utils, &ScxUtils::schedulersListed, this,
-        [this, conn](const QStringList &) {
-            disconnect(*conn);
-        });
+                    [this, conn](const QStringList &) { disconnect(*conn); });
     utils->listSchedulers();
 
     // Persistent connection for status updates
-    m_statusConn = connect(utils, &ScxUtils::statusReady, this,
-        [this](const SchedStatus &s) {
-            updateStatusBar(s.active, s.name, s.mode);
-        });
+    m_statusConn = connect(utils, &ScxUtils::statusReady, this, [this](const SchedStatus &s) {
+        updateStatusBar(s.active, s.name, s.mode);
+    });
 
     m_pollTimer = new QTimer(this);
     m_pollTimer->setInterval(STATUS_POLL_INTERVAL_MS);
@@ -311,16 +311,13 @@ void MainWindow::buildNormalMode() {
 
 // ── Status ────────────────────────────────────────────────────────────────────
 
-void MainWindow::refreshStatus() {
-    ScxUtils::get()->queryStatus();
-}
+void MainWindow::refreshStatus() { ScxUtils::get()->queryStatus(); }
 
 void MainWindow::updateStatusBar(bool active, const QString &name, const QString &mode) {
     m_schedActive = active;
     if (active) {
         m_dot->setStyleSheet("color: #00cc00;");
-        m_statusText->setText(QString("%1 (%2)")
-                              .arg(humanizeSched(name), humanizeMode(mode)));
+        m_statusText->setText(QString("%1 (%2)").arg(humanizeSched(name), humanizeMode(mode)));
         m_stopBtn->setEnabled(!m_opInFlight);
         m_stopBtn->setVisible(true);
         setTray(true, name);
@@ -334,7 +331,8 @@ void MainWindow::updateStatusBar(bool active, const QString &name, const QString
 }
 
 void MainWindow::setTray(bool active, const QString &schedName) {
-    if (!m_tray) return;
+    if (!m_tray)
+        return;
     if (active) {
         m_tray->setIcon(trayIcon(QColor("#00cc00")));
         m_tray->setToolTip(QString("SCX: %1").arg(humanizeSched(schedName)));
@@ -348,12 +346,14 @@ void MainWindow::setTray(bool active, const QString &schedName) {
 
 void MainWindow::updateSchedInfo(const QString &bare) {
     for (const auto &si : ALL_SCHEDULERS) {
-        if (si.bare != bare) continue;
+        if (si.bare != bare)
+            continue;
         m_infoTitle->setText(si.display);
         m_infoCat->setText(si.category);
         m_infoDesc->setText(si.desc);
         QStringList modeLabels;
-        for (const QString &m : si.modes) modeLabels << humanizeMode(m);
+        for (const QString &m : si.modes)
+            modeLabels << humanizeMode(m);
         m_infoModes->setText(QString("Modes: %1").arg(modeLabels.join(", ")));
         return;
     }
@@ -367,14 +367,13 @@ void MainWindow::updateSchedInfo(const QString &bare) {
 
 void MainWindow::buildUnsupportedPage() {
     auto *page = new QWidget;
-    auto *l    = new QVBoxLayout(page);
+    auto *l = new QVBoxLayout(page);
     l->setAlignment(Qt::AlignCenter);
 
     auto *frame = new QFrame;
     frame->setObjectName("errorCard");
-    frame->setStyleSheet(
-        "#errorCard { border: 1px solid #333;"
-        "  border-radius: 6px; padding: 16px; }");
+    frame->setStyleSheet("#errorCard { border: 1px solid #333;"
+                         "  border-radius: 6px; padding: 16px; }");
     auto *fl = new QVBoxLayout(frame);
     fl->setSpacing(10);
 
@@ -403,14 +402,14 @@ void MainWindow::buildUnsupportedPage() {
     hint->setStyleSheet("color: #ccc;");
     fl->addWidget(hint);
 
-    const QString cmd = "sudo apt install -t trixie-backports linux-image-amd64 linux-headers-amd64";
+    const QString cmd =
+        "sudo apt install -t trixie-backports linux-image-amd64 linux-headers-amd64";
     auto *cmdEdit = new QLineEdit(cmd);
     cmdEdit->setReadOnly(true);
     cmdEdit->setAlignment(Qt::AlignCenter);
-    cmdEdit->setStyleSheet(
-        "QLineEdit { background: #2a2a2a; color: #88dd88;"
-        "border: 1px solid #555; border-radius: 4px;"
-        "padding: 6px 10px; font-family: monospace; font-size: 11px; }");
+    cmdEdit->setStyleSheet("QLineEdit { background: #2a2a2a; color: #88dd88;"
+                           "border: 1px solid #555; border-radius: 4px;"
+                           "padding: 6px 10px; font-family: monospace; font-size: 11px; }");
     QFontMetrics fm(cmdEdit->font());
     cmdEdit->setMinimumWidth(fm.horizontalAdvance(cmd) + 32);
     fl->addWidget(cmdEdit);
@@ -427,14 +426,13 @@ void MainWindow::buildUnsupportedPage() {
 
 void MainWindow::buildSetupPage() {
     auto *page = new QWidget;
-    auto *l    = new QVBoxLayout(page);
+    auto *l = new QVBoxLayout(page);
     l->setAlignment(Qt::AlignCenter);
 
     auto *frame = new QFrame;
     frame->setObjectName("errorCard");
-    frame->setStyleSheet(
-        "#errorCard { border: 1px solid #333;"
-        "  border-radius: 6px; padding: 16px; }");
+    frame->setStyleSheet("#errorCard { border: 1px solid #333;"
+                         "  border-radius: 6px; padding: 16px; }");
     auto *fl = new QVBoxLayout(frame);
     fl->setSpacing(10);
 
@@ -453,8 +451,8 @@ void MainWindow::buildSetupPage() {
     title->setAlignment(Qt::AlignCenter);
     fl->addWidget(title);
 
-    auto *hint = new QLabel(
-        "Install <b>scx-scheds</b> and <b>scx-tools</b> from the Debian repositories:");
+    auto *hint =
+        new QLabel("Install <b>scx-scheds</b> and <b>scx-tools</b> from the Debian repositories:");
     hint->setAlignment(Qt::AlignCenter);
     hint->setStyleSheet("color: #ccc;");
     fl->addWidget(hint);
@@ -463,10 +461,9 @@ void MainWindow::buildSetupPage() {
     auto *cmdEdit = new QLineEdit(cmd);
     cmdEdit->setReadOnly(true);
     cmdEdit->setAlignment(Qt::AlignCenter);
-    cmdEdit->setStyleSheet(
-        "QLineEdit { background: #2a2a2a; color: #88dd88;"
-        "border: 1px solid #555; border-radius: 4px;"
-        "padding: 6px 10px; font-family: monospace; font-size: 11px; }");
+    cmdEdit->setStyleSheet("QLineEdit { background: #2a2a2a; color: #88dd88;"
+                           "border: 1px solid #555; border-radius: 4px;"
+                           "padding: 6px 10px; font-family: monospace; font-size: 11px; }");
     QFontMetrics fm(cmdEdit->font());
     cmdEdit->setMinimumWidth(fm.horizontalAdvance(cmd) + 32);
     fl->addWidget(cmdEdit);
@@ -493,14 +490,16 @@ void MainWindow::toggleLog() {
 }
 
 void MainWindow::appendLog(const QString &msg) {
-    if (!m_log) return;
+    if (!m_log)
+        return;
     const QString ts = QDateTime::currentDateTime().toString("hh:mm:ss");
     m_log->append(QString("[%1] %2").arg(ts, msg));
     m_log->verticalScrollBar()->setValue(m_log->verticalScrollBar()->maximum());
 }
 
 void MainWindow::onStopClicked() {
-    if (m_ctrlTab) m_ctrlTab->stopScheduler();
+    if (m_ctrlTab)
+        m_ctrlTab->stopScheduler();
 }
 
 // ── Window close ──────────────────────────────────────────────────────────────
@@ -510,7 +509,8 @@ void MainWindow::closeEvent(QCloseEvent *event) {
         hide();
         event->ignore();
     } else {
-        if (m_pollTimer) m_pollTimer->stop();
+        if (m_pollTimer)
+            m_pollTimer->stop();
         event->accept();
     }
 }

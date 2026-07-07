@@ -1,15 +1,15 @@
 #include "controltab.h"
-#include "scxutils.h"
-#include "privops.h"
 #include "config.h"
+#include "privops.h"
+#include "scxutils.h"
 
-#include <QVBoxLayout>
-#include <QHBoxLayout>
 #include <QGridLayout>
 #include <QGroupBox>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
 #include <QTimer>
+#include <QVBoxLayout>
 #include <memory>
 
 ControlTab::ControlTab(QWidget *parent) : QWidget(parent) {
@@ -34,7 +34,7 @@ ControlTab::ControlTab(QWidget *parent) : QWidget(parent) {
     root->addLayout(grid);
 
     auto *btnRow = new QHBoxLayout;
-    m_startBtn   = new QPushButton("Apply");
+    m_startBtn = new QPushButton("Apply");
     m_startBtn->setMinimumWidth(120);
     m_startBtn->setMinimumHeight(34);
     m_refreshBtn = new QPushButton("Refresh");
@@ -47,11 +47,11 @@ ControlTab::ControlTab(QWidget *parent) : QWidget(parent) {
     m_persistCb = new QCheckBox("Make default at boot");
     root->addWidget(m_persistCb);
 
-    connect(m_schedCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &ControlTab::onSchedChanged);
-    connect(m_startBtn,   &QPushButton::clicked, this, &ControlTab::onStartSwitch);
+    connect(m_schedCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &ControlTab::onSchedChanged);
+    connect(m_startBtn, &QPushButton::clicked, this, &ControlTab::onStartSwitch);
     connect(m_refreshBtn, &QPushButton::clicked, this, &ControlTab::refreshList);
-    connect(m_persistCb,  &QCheckBox::toggled,   this, &ControlTab::onPersistToggled);
+    connect(m_persistCb, &QCheckBox::toggled, this, &ControlTab::onPersistToggled);
 
     refreshList();
 
@@ -67,10 +67,10 @@ void ControlTab::stopScheduler() { onStop(); }
 
 void ControlTab::refreshList() {
     auto *utils = ScxUtils::get();
-    auto  conn  = std::make_shared<QMetaObject::Connection>();
+    auto conn = std::make_shared<QMetaObject::Connection>();
 
-    *conn = connect(utils, &ScxUtils::schedulersListed, this,
-        [this, conn](const QStringList &scheds) {
+    *conn =
+        connect(utils, &ScxUtils::schedulersListed, this, [this, conn](const QStringList &scheds) {
             disconnect(*conn);
 
             QStringList list = scheds;
@@ -99,7 +99,8 @@ void ControlTab::refreshList() {
 
 void ControlTab::onSchedChanged() {
     const QString bare = m_schedCombo->currentData().toString();
-    if (bare.isEmpty()) return;
+    if (bare.isEmpty())
+        return;
 
     emit schedulerSelected(bare);
 
@@ -110,7 +111,8 @@ void ControlTab::onSchedChanged() {
     }
 
     QStringList modes = modeMap.value(bare);
-    if (modes.isEmpty()) modes = {"auto"};
+    if (modes.isEmpty())
+        modes = {"auto"};
 
     m_modeCombo->blockSignals(true);
     m_modeCombo->clear();
@@ -122,8 +124,7 @@ void ControlTab::onSchedChanged() {
 void ControlTab::onStartSwitch() {
     const QString sched = m_schedCombo->currentData().toString();
     if (sched.isEmpty()) {
-        QMessageBox::warning(this, "No scheduler selected",
-                             "Please select a scheduler first.");
+        QMessageBox::warning(this, "No scheduler selected", "Please select a scheduler first.");
         return;
     }
     const QString mode = m_modeCombo->currentData().toString();
@@ -136,16 +137,16 @@ void ControlTab::onStartSwitch() {
     setControlsEnabled(false);
 
     auto *utils = ScxUtils::get();
-    auto  conn  = std::make_shared<QMetaObject::Connection>();
+    auto conn = std::make_shared<QMetaObject::Connection>();
 
-    *conn = connect(utils, &ScxUtils::statusReady, this,
-        [this, conn, sched, mode](const SchedStatus &cur) {
+    *conn = connect(
+        utils, &ScxUtils::statusReady, this, [this, conn, sched, mode](const SchedStatus &cur) {
             disconnect(*conn);
 
             if (cur.active && cur.name == sched && cur.mode == mode) {
                 ScxUtils::saveState(sched, mode);
                 emit log(QString("%1 (%2) is already running")
-                         .arg(humanizeSched(sched), humanizeMode(mode)));
+                             .arg(humanizeSched(sched), humanizeMode(mode)));
                 setControlsEnabled(true);
                 return;
             }
@@ -154,19 +155,17 @@ void ControlTab::onStartSwitch() {
                 if (ok) {
                     ScxUtils::saveState(sched, mode);
                     emit log(QString("Now running %1 (%2)")
-                             .arg(humanizeSched(sched), humanizeMode(mode)));
+                                 .arg(humanizeSched(sched), humanizeMode(mode)));
                     if (m_persistCb->isChecked()) {
-                        PrivOps::get()->writeConfig(sched, mode,
-                            [this](bool ok2, const QString &msg2) {
-                                emit log(ok2
-                                    ? "Auto-start config saved"
-                                    : QString("Config write failed: %1")
-                                        .arg(msg2.isEmpty() ? "unknown error" : msg2));
+                        PrivOps::get()->writeConfig(
+                            sched, mode, [this](bool ok2, const QString &msg2) {
+                                emit log(ok2 ? "Auto-start config saved"
+                                             : QString("Config write failed: %1")
+                                                   .arg(msg2.isEmpty() ? "unknown error" : msg2));
                             });
                     }
                 } else {
-                    emit log(msg.isEmpty() ? ERR_SWITCH_FAILED
-                                            : QString("Failed: %1").arg(msg));
+                    emit log(msg.isEmpty() ? ERR_SWITCH_FAILED : QString("Failed: %1").arg(msg));
                 }
                 setControlsEnabled(true);
                 emit statusChanged();
@@ -174,11 +173,11 @@ void ControlTab::onStartSwitch() {
 
             if (!cur.active) {
                 emit log(QString("Starting %1 (%2)\xe2\x80\xa6")
-                         .arg(humanizeSched(sched), humanizeMode(mode)));
+                             .arg(humanizeSched(sched), humanizeMode(mode)));
                 PrivOps::get()->startScheduler(sched, mode, onDone);
             } else {
                 emit log(QString("Switching to %1 (%2)\xe2\x80\xa6")
-                         .arg(humanizeSched(sched), humanizeMode(mode)));
+                             .arg(humanizeSched(sched), humanizeMode(mode)));
                 PrivOps::get()->switchScheduler(sched, mode, onDone);
             }
         });
@@ -197,8 +196,7 @@ void ControlTab::onStop() {
 
     PrivOps::get()->stopScheduler([this](bool ok, const QString &msg) {
         emit log(ok ? "Stopped \xe2\x80\x94 back to EEVDF"
-                    : (msg.isEmpty() ? ERR_STOP_FAILED
-                                     : QString("Failed: %1").arg(msg)));
+                    : (msg.isEmpty() ? ERR_STOP_FAILED : QString("Failed: %1").arg(msg)));
         setControlsEnabled(true);
         emit statusChanged();
     });
@@ -216,9 +214,8 @@ void ControlTab::onPersistToggled(bool checked) {
 
     auto onDone = [this, checked](bool ok, const QString &msg) {
         if (ok) {
-            emit log(checked
-                ? "Auto-start enabled \xe2\x80\x94 scheduler will apply at next boot"
-                : "Auto-start disabled");
+            emit log(checked ? "Auto-start enabled \xe2\x80\x94 scheduler will apply at next boot"
+                             : "Auto-start disabled");
         } else {
             const char *canned = checked ? ERR_PERSIST_ENABLE : ERR_PERSIST_DISABLE;
             emit log(msg.isEmpty() ? canned : QString("Failed: %1").arg(msg));
@@ -241,12 +238,14 @@ void ControlTab::restoreState() {
     const auto [sched, mode] = ScxUtils::loadState();
     if (!sched.isEmpty()) {
         const int i = m_schedCombo->findData(sched);
-        if (i >= 0) m_schedCombo->setCurrentIndex(i);
+        if (i >= 0)
+            m_schedCombo->setCurrentIndex(i);
     }
     onSchedChanged();
     if (!mode.isEmpty()) {
         const int j = m_modeCombo->findData(mode);
-        if (j >= 0) m_modeCombo->setCurrentIndex(j);
+        if (j >= 0)
+            m_modeCombo->setCurrentIndex(j);
     }
 }
 

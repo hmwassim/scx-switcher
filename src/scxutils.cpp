@@ -1,19 +1,19 @@
 #include "scxutils.h"
 
-#include <QProcess>
+#include <QDebug>
 #include <QDir>
 #include <QFile>
-#include <QSaveFile>
 #include <QFileInfo>
-#include <QJsonDocument>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
+#include <QProcess>
 #include <QRegularExpression>
+#include <QSaveFile>
 #include <QStandardPaths>
 #include <QSysInfo>
-#include <QDebug>
 
-static constexpr int QUERY_TIMEOUT_MS = 15000;  // timeout for info queries
+static constexpr int QUERY_TIMEOUT_MS = 15000; // timeout for info queries
 
 ScxUtils *ScxUtils::get() {
     static ScxUtils *inst = new ScxUtils;
@@ -49,11 +49,20 @@ ScxUtils::ScxUtils(QObject *parent) : QObject(parent) {
         const QString out = QString::fromUtf8(m_proc->readAllStandardOutput()).trimmed();
 
         switch (op) {
-        case Op::Kernel:  onKernel(out);        break;
-        case Op::Status:  onStatus(exit, out);  break;
-        case Op::List:    onList(exit, out);     break;
-        case Op::Service: onService(exit, out);  break;
-        default: break;
+        case Op::Kernel:
+            onKernel(out);
+            break;
+        case Op::Status:
+            onStatus(exit, out);
+            break;
+        case Op::List:
+            onList(exit, out);
+            break;
+        case Op::Service:
+            onService(exit, out);
+            break;
+        default:
+            break;
         }
 
         // If a signal handler re-entrantly enqueued + ran the next job,
@@ -63,23 +72,25 @@ ScxUtils::ScxUtils(QObject *parent) : QObject(parent) {
     });
 
     connect(m_proc, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
-        if (m_current == Op::None) return;
+        if (m_current == Op::None)
+            return;
         // FailedToStart: finished never fires, so we handle it here.
         // Crashed: fall through — let finished handle it with the real exit status.
-        if (m_proc->error() != QProcess::FailedToStart) return;
+        if (m_proc->error() != QProcess::FailedToStart)
+            return;
 
         m_timeout->stop();
         const Op op = m_current;
         m_current = Op::None;
 
         dispatchError(op, QString("Cannot determine %1")
-                      .arg(op == Op::Kernel ? "kernel version"
-                                            : "process status"));
+                              .arg(op == Op::Kernel ? "kernel version" : "process status"));
         runNext();
     });
 
     connect(m_timeout, &QTimer::timeout, this, [this]() {
-        if (m_current == Op::None) return;
+        if (m_current == Op::None)
+            return;
 
         // Record the error and kill the process. Do NOT emit or mutate
         // m_current here — finished will fire asynchronously, see the
@@ -91,14 +102,14 @@ ScxUtils::ScxUtils(QObject *parent) : QObject(parent) {
     });
 }
 
-bool ScxUtils::scxctlPresent() {
-    return !QStandardPaths::findExecutable("scxctl").isEmpty();
-}
+bool ScxUtils::scxctlPresent() { return !QStandardPaths::findExecutable("scxctl").isEmpty(); }
 
-void ScxUtils::checkKernel()        { enqueue(Op::Kernel,  "uname",    {"-r"}); }
-void ScxUtils::queryStatus()        { enqueue(Op::Status,  "scxctl",   {"get"}); }
-void ScxUtils::listSchedulers()     { enqueue(Op::List,    "scxctl",   {"list"}); }
-void ScxUtils::checkServiceEnabled(){ enqueue(Op::Service, "systemctl",{"is-enabled", "scx_loader.service"}); }
+void ScxUtils::checkKernel() { enqueue(Op::Kernel, "uname", {"-r"}); }
+void ScxUtils::queryStatus() { enqueue(Op::Status, "scxctl", {"get"}); }
+void ScxUtils::listSchedulers() { enqueue(Op::List, "scxctl", {"list"}); }
+void ScxUtils::checkServiceEnabled() {
+    enqueue(Op::Service, "systemctl", {"is-enabled", "scx_loader.service"});
+}
 
 void ScxUtils::enqueue(Op op, const QString &prog, const QStringList &args) {
     m_queue.enqueue({op, prog, args});
@@ -107,7 +118,8 @@ void ScxUtils::enqueue(Op op, const QString &prog, const QStringList &args) {
 }
 
 void ScxUtils::runNext() {
-    if (m_queue.isEmpty()) return;
+    if (m_queue.isEmpty())
+        return;
     const auto job = m_queue.dequeue();
     m_current = job.op;
     m_timeout->start(QUERY_TIMEOUT_MS);
@@ -130,7 +142,8 @@ void ScxUtils::dispatchError(Op op, const QString &msg) {
     case Op::Service:
         emit serviceEnabled(false);
         break;
-    default: break;
+    default:
+        break;
     }
 }
 
@@ -142,30 +155,33 @@ void ScxUtils::onKernel(const QString &out) {
     const int minor = parts.value(1).split('-').value(0).toInt(&ok2);
 
     const bool versionOk = ok1 && ok2 && (major > 6 || (major == 6 && minor >= 12));
-    const bool sysfsOk   = QDir("/sys/kernel/sched_ext").exists();
+    const bool sysfsOk = QDir("/sys/kernel/sched_ext").exists();
 
     if (versionOk && sysfsOk)
-        emit kernelChecked(true,  QString("Linux %1 \xe2\x80\x94 sched_ext active").arg(ver));
+        emit kernelChecked(true, QString("Linux %1 \xe2\x80\x94 sched_ext active").arg(ver));
     else if (versionOk)
-        emit kernelChecked(false, QString("Linux %1 \xe2\x80\x94 /sys/kernel/sched_ext not found").arg(ver));
+        emit kernelChecked(
+            false, QString("Linux %1 \xe2\x80\x94 /sys/kernel/sched_ext not found").arg(ver));
     else
         emit kernelChecked(false, QString("Linux %1 \xe2\x80\x94 kernel 6.12+ required").arg(ver));
 }
 
 void ScxUtils::onStatus(int exit, const QString &out) {
     SchedStatus s;
-    if (exit != 0 || out.isEmpty()
-            || out.contains("not running", Qt::CaseInsensitive)
-            || !out.startsWith("running", Qt::CaseInsensitive)) {
+    if (exit != 0 || out.isEmpty() || out.contains("not running", Qt::CaseInsensitive) ||
+        !out.startsWith("running", Qt::CaseInsensitive)) {
         emit statusReady(s);
         return;
     }
 
     const QStringList words = out.split(' ', Qt::SkipEmptyParts);
-    if (words.size() < 2) { emit statusReady(s); return; }
+    if (words.size() < 2) {
+        emit statusReady(s);
+        return;
+    }
 
     s.active = true;
-    s.name   = words[1];
+    s.name = words[1];
     if (s.name.startsWith("scx_"))
         s.name = s.name.mid(4);
 
@@ -177,13 +193,19 @@ void ScxUtils::onStatus(int exit, const QString &out) {
 }
 
 void ScxUtils::onList(int exit, const QString &out) {
-    if (exit != 0) { emit schedulersListed({}); return; }
+    if (exit != 0) {
+        emit schedulersListed({});
+        return;
+    }
 
     const int idx = out.indexOf("supported schedulers:");
-    if (idx == -1) { emit schedulersListed({}); return; }
+    if (idx == -1) {
+        emit schedulersListed({});
+        return;
+    }
 
-    const QByteArray json = out.mid(idx + static_cast<int>(strlen("supported schedulers:")))
-                                .trimmed().toUtf8();
+    const QByteArray json =
+        out.mid(idx + static_cast<int>(strlen("supported schedulers:"))).trimmed().toUtf8();
     QJsonParseError err;
     const QJsonDocument doc = QJsonDocument::fromJson(json, &err);
     if (err.error != QJsonParseError::NoError || !doc.isArray()) {
@@ -194,7 +216,8 @@ void ScxUtils::onList(int exit, const QString &out) {
     QStringList list;
     for (const auto &v : doc.array()) {
         QString name = v.toString();
-        if (name.startsWith("scx_")) name = name.mid(4);
+        if (name.startsWith("scx_"))
+            name = name.mid(4);
         list.append(name);
     }
     emit schedulersListed(list);
@@ -205,8 +228,7 @@ void ScxUtils::onService(int exit, const QString &out) {
 }
 
 static QString statePath() {
-    const QString base = qEnvironmentVariable("XDG_STATE_HOME",
-                                              QDir::homePath() + "/.local/state");
+    const QString base = qEnvironmentVariable("XDG_STATE_HOME", QDir::homePath() + "/.local/state");
     return base + "/scx-switcher/state.json";
 }
 
@@ -222,7 +244,7 @@ void ScxUtils::saveState(const QString &sched, const QString &mode) {
 
     QJsonObject obj;
     obj["scheduler"] = sched;
-    obj["mode"]      = mode;
+    obj["mode"] = mode;
 
     f.write(QJsonDocument(obj).toJson());
 
@@ -232,11 +254,13 @@ void ScxUtils::saveState(const QString &sched, const QString &mode) {
     }
 }
 
-QPair<QString,QString> ScxUtils::loadState() {
+QPair<QString, QString> ScxUtils::loadState() {
     QFile f(statePath());
-    if (!f.open(QIODevice::ReadOnly)) return {};
+    if (!f.open(QIODevice::ReadOnly))
+        return {};
     const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
-    if (!doc.isObject()) return {};
+    if (!doc.isObject())
+        return {};
     const QJsonObject obj = doc.object();
     return {obj["scheduler"].toString(), obj["mode"].toString()};
 }

@@ -1,23 +1,23 @@
 #pragma once
 
 #include <QObject>
-#include <QString>
-#include <QStringList>
 #include <QPair>
 #include <QQueue>
+#include <QString>
+#include <QStringList>
 #include <QTimer>
 
 class QProcess;
 
 struct SchedStatus {
-    bool    active = false;
+    bool active = false;
     QString name;
     QString mode;
 };
 
 class ScxUtils : public QObject {
     Q_OBJECT
-public:
+    public:
     static ScxUtils *get();
 
     static bool scxctlPresent();
@@ -27,23 +27,23 @@ public:
     void listSchedulers();
     void checkServiceEnabled();
 
-    static void   saveState(const QString &sched, const QString &mode);
-    static QPair<QString,QString> loadState();
+    static void saveState(const QString &sched, const QString &mode);
+    static QPair<QString, QString> loadState();
 
-signals:
+    signals:
     void kernelChecked(bool supported, const QString &detail);
     void statusReady(const SchedStatus &status);
     void schedulersListed(const QStringList &bareNames);
     void serviceEnabled(bool enabled);
 
-private:
+    private:
     explicit ScxUtils(QObject *parent = nullptr);
 
     enum class Op { None, Kernel, Status, List, Service };
 
     struct Job {
-        Op          op;
-        QString     program;
+        Op op;
+        QString program;
         QStringList args;
     };
 
@@ -57,9 +57,9 @@ private:
 
     void dispatchError(Op op, const QString &msg);
 
-    Op        m_current = Op::None;
+    Op m_current = Op::None;
     QQueue<Job> m_queue;
-    QProcess *m_proc    = nullptr;
-    QTimer   *m_timeout = nullptr;
-    QString   m_pendingError;   // set by timeout handler, consumed by finished
+    QProcess *m_proc = nullptr;
+    QTimer *m_timeout = nullptr;
+    QString m_pendingError; // set by timeout handler, consumed by finished
 };

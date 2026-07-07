@@ -1,13 +1,13 @@
 #include "privops.h"
 
-#include <QProcess>
 #include <QHash>
+#include <QProcess>
 #include <QStandardPaths>
 
-static constexpr const char *SCXCTL            = "scxctl";
-static constexpr const char *PKEXEC            = "pkexec";
-static constexpr const char *TOGGLE_AUTOSTART  = "/usr/libexec/scx-switcher/toggle-autostart";
-static constexpr const char *WRITE_CONFIG      = "/usr/libexec/scx-switcher/write-config";
+static constexpr const char *SCXCTL = "scxctl";
+static constexpr const char *PKEXEC = "pkexec";
+static constexpr const char *TOGGLE_AUTOSTART = "/usr/libexec/scx-switcher/toggle-autostart";
+static constexpr const char *WRITE_CONFIG = "/usr/libexec/scx-switcher/write-config";
 
 static constexpr int OP_TIMEOUT_MS = 30000;
 
@@ -19,11 +19,8 @@ static constexpr int OP_TIMEOUT_MS = 30000;
 
 static QString tomlMode(const QString &mode) {
     static const QHash<QString, QString> map = {
-        {"auto",       "Auto"},
-        {"gaming",     "Gaming"},
-        {"lowlatency", "LowLatency"},
-        {"powersave",  "PowerSave"},
-        {"server",     "Server"},
+        {"auto", "Auto"},           {"gaming", "Gaming"}, {"lowlatency", "LowLatency"},
+        {"powersave", "PowerSave"}, {"server", "Server"},
     };
     return map.value(mode.toLower(), "Auto");
 }
@@ -35,9 +32,7 @@ PrivOps *PrivOps::get() {
     return inst;
 }
 
-bool PrivOps::pkexecPresent() {
-    return !QStandardPaths::findExecutable(PKEXEC).isEmpty();
-}
+bool PrivOps::pkexecPresent() { return !QStandardPaths::findExecutable(PKEXEC).isEmpty(); }
 
 QString PrivOps::checkPolicyPath() {
     const QString resolved = QStandardPaths::findExecutable("scxctl");
@@ -47,7 +42,7 @@ QString PrivOps::checkPolicyPath() {
     return QString("scxctl found at %1, but the auth policy expects %2"
                    " \xe2\x80\x94 you may be prompted for a full admin"
                    " password on every scheduler change.")
-           .arg(resolved, expected);
+        .arg(resolved, expected);
 }
 
 // ── Construction / destruction ────────────────────────────────────────────────
@@ -70,12 +65,11 @@ PrivOps::PrivOps(QObject *parent) : QObject(parent) {
         }
     });
 
-    connect(m_proc, &QProcess::finished, this,
-            [this](int exit, QProcess::ExitStatus status) {
+    connect(m_proc, &QProcess::finished, this, [this](int exit, QProcess::ExitStatus status) {
         m_timeout->stop();
         m_configContent.clear();
 
-        const bool ok  = (status == QProcess::NormalExit && exit == 0);
+        const bool ok = (status == QProcess::NormalExit && exit == 0);
         const QString out = QString::fromUtf8(m_proc->readAllStandardOutput()).trimmed();
         const QString err = QString::fromUtf8(m_proc->readAllStandardError()).trimmed();
 
@@ -106,8 +100,8 @@ PrivOps::PrivOps(QObject *parent) : QObject(parent) {
             m_timeout->stop();
             m_configContent.clear();
 
-            const QString msg = QString("Failed to start privileged operation: %1")
-                                .arg(m_proc->errorString());
+            const QString msg =
+                QString("Failed to start privileged operation: %1").arg(m_proc->errorString());
 
             if (m_callback) {
                 auto cb = std::move(m_callback);
@@ -126,7 +120,8 @@ PrivOps::PrivOps(QObject *parent) : QObject(parent) {
     });
 
     connect(m_timeout, &QTimer::timeout, this, [this]() {
-        if (m_proc->state() == QProcess::NotRunning) return;
+        if (m_proc->state() == QProcess::NotRunning)
+            return;
         m_configContent.clear();
         if (m_callback) {
             auto cb = std::move(m_callback);
@@ -147,7 +142,8 @@ PrivOps::~PrivOps() {
 // ── Internal ──────────────────────────────────────────────────────────────────
 
 void PrivOps::cancelInFlight() {
-    if (m_proc->state() == QProcess::NotRunning) return;
+    if (m_proc->state() == QProcess::NotRunning)
+        return;
     m_timeout->stop();
     m_configContent.clear();
     // Always fire the old callback so the caller isn't left hanging.
@@ -180,26 +176,19 @@ void PrivOps::switchScheduler(const QString &sched, const QString &mode, Callbac
     run({SCXCTL, "switch", "--sched", sched, "--mode", mode}, std::move(cb));
 }
 
-void PrivOps::stopScheduler(Callback cb) {
-    run({SCXCTL, "stop"}, std::move(cb));
-}
+void PrivOps::stopScheduler(Callback cb) { run({SCXCTL, "stop"}, std::move(cb)); }
 
-void PrivOps::enableService(Callback cb) {
-    run({TOGGLE_AUTOSTART, "enable"}, std::move(cb));
-}
+void PrivOps::enableService(Callback cb) { run({TOGGLE_AUTOSTART, "enable"}, std::move(cb)); }
 
-void PrivOps::disableService(Callback cb) {
-    run({TOGGLE_AUTOSTART, "disable"}, std::move(cb));
-}
+void PrivOps::disableService(Callback cb) { run({TOGGLE_AUTOSTART, "disable"}, std::move(cb)); }
 
 void PrivOps::writeConfig(const QString &sched, const QString &mode, Callback cb) {
     // Use tomlMode() — NOT humanizeMode() — to get the correct TOML enum variant.
     // humanizeMode("lowlatency") = "Low Latency" (display only)
     // tomlMode("lowlatency")     = "LowLatency"  (what scx_loader config.toml expects)
-    const QString content = QString(
-        "default_sched = \"scx_%1\"\n"
-        "default_mode  = \"%2\"\n"
-    ).arg(sched, tomlMode(mode));
+    const QString content = QString("default_sched = \"scx_%1\"\n"
+                                    "default_mode  = \"%2\"\n")
+                                .arg(sched, tomlMode(mode));
 
     if (m_proc->state() != QProcess::NotRunning) {
         cancelInFlight();
