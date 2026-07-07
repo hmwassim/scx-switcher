@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
+# Network is required for QLocalServer/QLocalSocket (single-instance guard)
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
 
 # Validate required resources exist
