@@ -16,6 +16,7 @@ public:
 
     static PrivOps *get();
     static bool     pkexecPresent();
+    static QString  checkPolicyPath();
 
     void startScheduler (const QString &sched, const QString &mode, Callback cb = {});
     void switchScheduler(const QString &sched, const QString &mode, Callback cb = {});

@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "controltab.h"
 #include "scxutils.h"
+#include "privops.h"
 #include "config.h"
 
 #include <QApplication>
@@ -280,6 +281,11 @@ void MainWindow::buildNormalMode() {
     }
 
     appendLog(QString("%1 v%2 ready").arg(APP_NAME, APP_VERSION));
+
+    // Warn if scxctl path doesn't match the PolKit policy exec.path.
+    const QString pathWarn = PrivOps::checkPolicyPath();
+    if (!pathWarn.isEmpty())
+        appendLog(pathWarn);
 
     // Poll for schedulers list (loads into combo, triggers info update on selection)
     auto *utils = ScxUtils::get();

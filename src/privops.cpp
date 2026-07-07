@@ -39,6 +39,17 @@ bool PrivOps::pkexecPresent() {
     return !QStandardPaths::findExecutable(PKEXEC).isEmpty();
 }
 
+QString PrivOps::checkPolicyPath() {
+    const QString resolved = QStandardPaths::findExecutable("scxctl");
+    const QString expected = "/usr/bin/scxctl";
+    if (resolved.isEmpty() || resolved == expected)
+        return {};
+    return QString("scxctl found at %1, but the auth policy expects %2"
+                   " \xe2\x80\x94 you may be prompted for a full admin"
+                   " password on every scheduler change.")
+           .arg(resolved, expected);
+}
+
 // ── Construction / destruction ────────────────────────────────────────────────
 
 PrivOps::PrivOps(QObject *parent) : QObject(parent) {
