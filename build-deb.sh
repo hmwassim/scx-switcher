@@ -20,7 +20,7 @@ rm -f ../scx-switcher_*.buildinfo \
       ../scx-switcher_*.changes   2>/dev/null || true
 
 echo "==> Generating SHA256SUMS for all .deb files in build/…"
-(cd build && sha256sum ./*.deb > SHA256SUMS)
+(cd build && sha256sum scx-switcher_*.deb > SHA256SUMS)
 echo "    $(wc -l < build/SHA256SUMS) checksum(s) written"
 
 echo ""
