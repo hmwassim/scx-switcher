@@ -27,17 +27,28 @@ if [ "${SKIP_PROMPT:-}" != "1" ]; then
     fi
 fi
 
-# Disable service first if active (clean shutdown)
-info "Disabling scx_loader auto-start..."
-sudo systemctl disable scx_loader.service 2>/dev/null || true
-ok
-
 # Remove systemd kernel-check drop-in (installed by scx-switcher)
 info "Removing systemd kernel-check drop-in..."
 sudo rm -f /etc/systemd/system/scx_loader.service.d/kernel-check.conf
 sudo rmdir /etc/systemd/system/scx_loader.service.d 2>/dev/null || true
 sudo systemctl daemon-reload 2>/dev/null || true
 ok
+
+# Ask before disabling the service (may have been configured independently)
+if systemctl is-active scx_loader.service &>/dev/null || systemctl is-enabled scx_loader.service &>/dev/null; then
+    if [ "${SKIP_PROMPT:-}" = "1" ]; then
+        REPLY="y"
+    else
+        read -r -p "  Disable and stop scx_loader.service (was enabled by scx-switcher)? [y/N] " REPLY
+    fi
+    if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+        info "Disabling scx_loader auto-start..."
+        sudo systemctl disable --now scx_loader.service 2>/dev/null || true
+        ok
+    else
+        info "Keeping scx_loader.service unchanged"
+    fi
+fi
 
 # Remove GUI binary
 info "Removing GUI binary..."
