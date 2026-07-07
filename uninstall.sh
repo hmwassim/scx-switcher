@@ -64,7 +64,7 @@ ok
 
 # Remove PolKit policy
 info "Removing PolKit policy..."
-sudo rm -f /usr/share/polkit-1/actions/com.scx-switcher.policy
+sudo rm -f /usr/share/polkit-1/actions/io.github.hmwassim.scx_switcher.policy
 ok
 
 # Remove kernel-check drop-in from share as well

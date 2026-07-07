@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<component type="desktop">
-  <id>com.scx-switcher</id>
+<component type="desktop-application">
+  <id>io.github.hmwassim.scx_switcher</id>
   <name>SCX Switcher</name>
   <summary>Qt6 GUI for managing sched-ext BPF CPU schedulers</summary>
   <description>
@@ -18,6 +18,11 @@
   <launchable type="desktop-id">scx-switcher.desktop</launchable>
   <url type="homepage">https://github.com/hmwassim/scx-switcher</url>
   <project_license>MIT</project_license>
+  <metadata_license>MIT</metadata_license>
+  <content_rating type="oars-1.1"/>
+  <developer id="io.github.hmwassim.scx_switcher">
+    <name>HM. Wassim</name>
+  </developer>
   <categories>
     <category>System</category>
   </categories>
