@@ -35,10 +35,11 @@ ControlTab::ControlTab(QWidget *parent) : QWidget(parent) {
 
     auto *btnRow = new QHBoxLayout;
     m_startBtn = new QPushButton("Apply");
-    m_startBtn->setMinimumWidth(120);
-    m_startBtn->setMinimumHeight(34);
+    m_startBtn->setMinimumWidth(80);
+    m_startBtn->setMinimumHeight(30);
     m_refreshBtn = new QPushButton("Refresh");
-    m_refreshBtn->setMinimumHeight(34);
+    m_refreshBtn->setMinimumWidth(80);
+    m_refreshBtn->setMinimumHeight(30);
     btnRow->addWidget(m_startBtn);
     btnRow->addWidget(m_refreshBtn);
     btnRow->addStretch();
