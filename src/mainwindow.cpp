@@ -251,6 +251,16 @@ void MainWindow::buildNormalMode() {
     m_log->setMaximumHeight(110);
     QFont lf2("monospace", 9);
     m_log->setFont(lf2);
+    m_log->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_log, &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
+        auto *menu = m_log->createStandardContextMenu();
+        menu->addSeparator();
+        auto *clearAct = menu->addAction("Clear");
+        clearAct->setEnabled(!m_log->document()->isEmpty());
+        connect(clearAct, &QAction::triggered, m_log, &QTextEdit::clear);
+        menu->popup(m_log->viewport()->mapToGlobal(pos));
+        connect(menu, &QMenu::aboutToHide, menu, &QObject::deleteLater);
+    });
     logL->addWidget(m_log);
 
     pageLayout->addWidget(logSection);
