@@ -7,7 +7,7 @@
   <vendor_url>https://github.com/hmwassim/scx-switcher</vendor_url>
   <icon_name>scx-switcher</icon_name>
 
-  <action id="com.scx-switcher.ctl-scxctl">
+  <action id="io.github.hmwassim.scx_switcher.ctl-scxctl">
     <description>Manage sched-ext CPU scheduler via scxctl</description>
     <message>Authentication is required to manage the CPU scheduler</message>
     <defaults>
@@ -18,7 +18,7 @@
     <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/scxctl</annotate>
   </action>
 
-  <action id="com.scx-switcher.ctl-systemctl">
+  <action id="io.github.hmwassim.scx_switcher.ctl-systemctl">
     <description>Enable/disable scx_loader auto-start</description>
     <message>Authentication is required to change scx_loader auto-start settings</message>
     <defaults>
@@ -29,7 +29,7 @@
     <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/scx-switcher/toggle-autostart</annotate>
   </action>
 
-  <action id="com.scx-switcher.write-config">
+  <action id="io.github.hmwassim.scx_switcher.write-config">
     <description>Write scx_loader scheduler configuration</description>
     <message>Authentication is required to write the scheduler configuration</message>
     <defaults>

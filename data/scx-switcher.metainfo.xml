@@ -18,7 +18,7 @@
   <launchable type="desktop-id">scx-switcher.desktop</launchable>
   <url type="homepage">https://github.com/hmwassim/scx-switcher</url>
   <project_license>MIT</project_license>
-  <metadata_license>MIT</metadata_license>
+  <metadata_license>CC0-1.0</metadata_license>
   <content_rating type="oars-1.1"/>
   <developer id="io.github.hmwassim.scx_switcher">
     <name>HM. Wassim</name>
