@@ -71,8 +71,22 @@ PrivOps::PrivOps(QObject *parent) : QObject(parent) {
         if (m_callback) {
             auto cb = std::move(m_callback);
             m_callback = nullptr;
-            // On success pass stdout; on failure pass stderr (fall back to stdout if empty).
             cb(ok, ok ? out : (err.isEmpty() ? out : err));
+        }
+
+        // Drain any pending op queued while the previous process was in-flight.
+        if (m_pendingOp && m_proc->state() == QProcess::NotRunning) {
+            auto op = std::move(*m_pendingOp);
+            m_pendingOp.reset();
+            m_callback = std::move(op.callback);
+            if (!op.configContent.isEmpty()) {
+                m_configContent = op.configContent;
+                m_timeout->start(OP_TIMEOUT_MS);
+                m_proc->start(PKEXEC, QStringList{WRITE_CONFIG});
+            } else {
+                m_timeout->start(OP_TIMEOUT_MS);
+                m_proc->start(PKEXEC, op.args);
+            }
         }
     });
 
@@ -80,11 +94,22 @@ PrivOps::PrivOps(QObject *parent) : QObject(parent) {
         if (m_proc->error() == QProcess::FailedToStart) {
             m_timeout->stop();
             m_configContent.clear();
+
+            const QString msg = QString("Failed to start privileged operation: %1")
+                                .arg(m_proc->errorString());
+
             if (m_callback) {
                 auto cb = std::move(m_callback);
                 m_callback = nullptr;
-                cb(false, QString("Failed to start privileged operation: %1")
-                          .arg(m_proc->errorString()));
+                cb(false, msg);
+            }
+
+            // A pending op would also fail to start — don't retry it.
+            if (m_pendingOp) {
+                auto op = std::move(*m_pendingOp);
+                m_pendingOp.reset();
+                if (op.callback)
+                    op.callback(false, msg);
             }
         }
     });
@@ -97,8 +122,6 @@ PrivOps::PrivOps(QObject *parent) : QObject(parent) {
             m_callback = nullptr;
             cb(false, "Operation timed out");
         }
-        // Async kill — no waitForFinished. Qt suppresses finished for
-        // the old PID when a new process is started via start().
         m_proc->kill();
     });
 }
@@ -122,15 +145,15 @@ void PrivOps::cancelInFlight() {
         m_callback = nullptr;
         cb(false, "Superseded by new operation");
     }
-    // Async kill — finished for this PID will be suppressed by Qt
-    // when the subsequent run()/writeConfig() calls start().
-    // If no subsequent operation starts, finished fires with
-    // m_callback == nullptr → no-op.
     m_proc->kill();
 }
 
 void PrivOps::run(const QStringList &args, Callback cb) {
-    cancelInFlight();
+    if (m_proc->state() != QProcess::NotRunning) {
+        cancelInFlight();
+        m_pendingOp = PendingOp{args, {}, std::move(cb)};
+        return;
+    }
     m_callback = std::move(cb);
     m_timeout->start(OP_TIMEOUT_MS);
     m_proc->start(PKEXEC, args);
@@ -167,7 +190,11 @@ void PrivOps::writeConfig(const QString &sched, const QString &mode, Callback cb
         "default_mode  = \"%2\"\n"
     ).arg(sched, tomlMode(mode));
 
-    cancelInFlight();
+    if (m_proc->state() != QProcess::NotRunning) {
+        cancelInFlight();
+        m_pendingOp = PendingOp{{}, content, std::move(cb)};
+        return;
+    }
     m_configContent = content;
     m_callback = std::move(cb);
     m_timeout->start(OP_TIMEOUT_MS);

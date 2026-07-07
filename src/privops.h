@@ -5,6 +5,7 @@
 #include <QStringList>
 #include <QTimer>
 #include <functional>
+#include <optional>
 
 class QProcess;
 
@@ -27,11 +28,18 @@ private:
     explicit PrivOps(QObject *parent = nullptr);
     ~PrivOps();
 
+    struct PendingOp {
+        QStringList args;
+        QString     configContent;
+        Callback    callback;
+    };
+
     void run(const QStringList &args, Callback cb);
     void cancelInFlight();
 
-    QProcess *m_proc          = nullptr;
-    QTimer   *m_timeout       = nullptr;
-    QString   m_configContent;
-    Callback  m_callback;
+    QProcess              *m_proc          = nullptr;
+    QTimer                *m_timeout       = nullptr;
+    QString                m_configContent;
+    Callback               m_callback;
+    std::optional<PendingOp> m_pendingOp;
 };
