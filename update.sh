@@ -39,18 +39,17 @@ fi
 exec > >(tee -a "$LOG") 2>&1 || true
 log "=== scx-switcher update started ==="
 
-# Detect latest release
-OWNER_REPO="${REPO#https://github.com/}"
-API="https://api.github.com/repos/$OWNER_REPO/releases/latest"
-if command -v jq &>/dev/null; then
-    TAG=$(curl -sL "$API" | jq -r '.tag_name' 2>/dev/null || true)
-else
-    TAG=$(curl -sL "$API" | grep -m1 '"tag_name"' | sed 's/.*"tag_name": "//;s/".*//' 2>/dev/null || true)
-fi
-if [ -z "$TAG" ]; then
+# Resolve latest tag via HTTP redirect — no API calls (no rate limit)
+LATEST_URL=$(curl -sIL -o /dev/null -w '%{url_effective}' "https://github.com/${REPO#https://github.com/}/releases/latest" 2>/dev/null || true)
+TAG=$(basename "$LATEST_URL" 2>/dev/null || true)
+if [ -z "$TAG" ] || [ "$TAG" = "latest" ]; then
     fail "Could not determine latest release from $REPO"
 fi
 VERSION="${TAG#v}"
+
+verify_sha256() {
+    (cd "$1" && grep "$2" SHA256SUMS | sha256sum -c -) >/dev/null 2>&1 || return 1
+}
 
 echo ""
 info "Updating SCX Switcher components to $TAG..."
@@ -58,16 +57,33 @@ echo ""
 
 # Step 1: Download latest .debs
 BASE_URL="$REPO/releases/download/$TAG"
-info "Downloading scx-scheds..."
 rm -rf "$DEB_DIR"
 mkdir -p "$DEB_DIR"
-curl -sL "$BASE_URL/scx-scheds_${VERSION}_${ARCH}.deb" \
-    -o "$DEB_DIR/scx-scheds_${VERSION}_${ARCH}.deb" || fail "scx-scheds download failed"
+info "Downloading SHA256SUMS..."
+if curl -sL --fail "$BASE_URL/SHA256SUMS" -o "$DEB_DIR/SHA256SUMS" 2>/dev/null; then
+    ok
+    HAS_SUMS=1
+else
+    warn "SHA256SUMS not found in release — skipping integrity verification"
+    HAS_SUMS=0
+fi
+
+info "Downloading scx-scheds..."
+DEB_SCHEDS="scx-scheds_${VERSION}_${ARCH}.deb"
+curl -sL "$BASE_URL/$DEB_SCHEDS" \
+    -o "$DEB_DIR/$DEB_SCHEDS" || fail "scx-scheds download failed"
+if [ "$HAS_SUMS" = "1" ] && ! verify_sha256 "$DEB_DIR" "$DEB_SCHEDS"; then
+    fail "scx-scheds SHA256 mismatch"
+fi
 ok
 
 info "Downloading scx-tools..."
-curl -sL "$BASE_URL/scx-tools_${VERSION}_${ARCH}.deb" \
-    -o "$DEB_DIR/scx-tools_${VERSION}_${ARCH}.deb" || fail "scx-tools download failed"
+DEB_TOOLS="scx-tools_${VERSION}_${ARCH}.deb"
+curl -sL "$BASE_URL/$DEB_TOOLS" \
+    -o "$DEB_DIR/$DEB_TOOLS" || fail "scx-tools download failed"
+if [ "$HAS_SUMS" = "1" ] && ! verify_sha256 "$DEB_DIR" "$DEB_TOOLS"; then
+    fail "scx-tools SHA256 mismatch"
+fi
 ok
 
 # Step 2: Install .debs

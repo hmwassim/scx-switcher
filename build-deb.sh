@@ -19,6 +19,10 @@ mv ../scx-switcher-dbgsym_*.deb   build/ 2>/dev/null || true
 rm -f ../scx-switcher_*.buildinfo \
       ../scx-switcher_*.changes   2>/dev/null || true
 
+echo "==> Generating SHA256SUMS for all .deb files in build/…"
+(cd build && sha256sum ./*.deb > SHA256SUMS)
+echo "    $(wc -l < build/SHA256SUMS) checksum(s) written"
+
 echo ""
-echo "==> Done. Package in build/:"
+echo "==> Done. Package(s) in build/:"
 ls -lh build/scx-switcher_*.deb

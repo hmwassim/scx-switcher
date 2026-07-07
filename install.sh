@@ -25,6 +25,7 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC
 info()  { echo -e "  ${CYAN}::${NC} $*"; }
 ok()    { echo -e "  ${GREEN}OK${NC}"; }
 skip()  { echo -e "  ${YELLOW}SKIP${NC} $*"; }
+warn()  { echo -e "  ${YELLOW}WARN${NC} $*"; }
 fail()  { echo -e "  ${RED}FAIL${NC} $*"; exit 1; }
 step()  { echo ""; echo -e " ${CYAN}[$1/$TOTAL]${NC} $2"; }
 log()   { echo "[$(date '+%H:%M:%S')] $*" >> "$LOG"; }
@@ -37,14 +38,8 @@ step_is_completed() {
     [ -f "$STEP_FILE" ] && grep -qxF "$1" "$STEP_FILE" 2>/dev/null
 }
 
-fetch_latest_tag() {
-    OWNER_REPO="${REPO#https://github.com/}"
-    API="https://api.github.com/repos/$OWNER_REPO/releases/latest"
-    if command -v jq &>/dev/null; then
-        curl -sL "$API" | jq -r '.tag_name' 2>/dev/null || true
-    else
-        curl -sL "$API" | grep -m1 '"tag_name"' | sed 's/.*"tag_name": "//;s/".*//' 2>/dev/null || true
-    fi
+verify_sha256() {
+    (cd "$1" && grep "$2" SHA256SUMS | sha256sum -c -) >/dev/null 2>&1 || return 1
 }
 
 cleanup() {
@@ -162,20 +157,41 @@ else
         if ! $FLAG_DRY_RUN; then
             if [ -n "$FLAG_LOCAL_DEBS" ]; then
                 info "Using .debs from $FLAG_LOCAL_DEBS..."
+                warn "Skipping integrity verification for local .deb files"
                 cp "$FLAG_LOCAL_DEBS"/scx-scheds_*_"${ARCH}".deb "$DEB_DIR/" 2>/dev/null || fail "scx-scheds .deb not found in $FLAG_LOCAL_DEBS"
                 cp "$FLAG_LOCAL_DEBS"/scx-tools_*_"${ARCH}".deb  "$DEB_DIR/" 2>/dev/null || fail "scx-tools .deb not found in $FLAG_LOCAL_DEBS"
             else
-                TAG=$(fetch_latest_tag)
-                if [ -z "$TAG" ]; then
+                # Resolve latest tag via HTTP redirect — no API calls (no rate limit)
+                LATEST_URL=$(curl -sIL -o /dev/null -w '%{url_effective}' "https://github.com/${REPO#https://github.com/}/releases/latest" 2>/dev/null || true)
+                TAG=$(basename "$LATEST_URL" 2>/dev/null || true)
+                if [ -z "$TAG" ] || [ "$TAG" = "latest" ]; then
                     fail "Could not determine latest release from $REPO"
                 fi
                 VERSION="${TAG#v}"
                 BASE_URL="$REPO/releases/download/$TAG"
                 info "Latest release: $TAG"
+                info "Downloading SHA256SUMS..."
+                if curl -sL --fail "$BASE_URL/SHA256SUMS" -o "$DEB_DIR/SHA256SUMS" 2>/dev/null; then
+                    ok
+                    HAS_SUMS=1
+                else
+                    warn "SHA256SUMS not found in release — skipping integrity verification"
+                    HAS_SUMS=0
+                fi
                 info "Downloading scx-scheds..."
-                curl -sL "$BASE_URL/scx-scheds_${VERSION}_${ARCH}.deb" -o "$DEB_DIR/scx-scheds_${VERSION}_${ARCH}.deb" || fail "scx-scheds download failed"
+                DEB_SCHEDS="scx-scheds_${VERSION}_${ARCH}.deb"
+                curl -sL "$BASE_URL/$DEB_SCHEDS" -o "$DEB_DIR/$DEB_SCHEDS" || fail "scx-scheds download failed"
+                if [ "$HAS_SUMS" = "1" ] && ! verify_sha256 "$DEB_DIR" "$DEB_SCHEDS"; then
+                    fail "scx-scheds SHA256 mismatch"
+                fi
+                ok
                 info "Downloading scx-tools..."
-                curl -sL "$BASE_URL/scx-tools_${VERSION}_${ARCH}.deb"  -o "$DEB_DIR/scx-tools_${VERSION}_${ARCH}.deb"  || fail "scx-tools download failed"
+                DEB_TOOLS="scx-tools_${VERSION}_${ARCH}.deb"
+                curl -sL "$BASE_URL/$DEB_TOOLS"  -o "$DEB_DIR/$DEB_TOOLS"  || fail "scx-tools download failed"
+                if [ "$HAS_SUMS" = "1" ] && ! verify_sha256 "$DEB_DIR" "$DEB_TOOLS"; then
+                    fail "scx-tools SHA256 mismatch"
+                fi
+                ok
             fi
 
             info "Installing scx-scheds + scx-tools..."
