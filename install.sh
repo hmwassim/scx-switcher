@@ -157,8 +157,8 @@ else
         if ! $FLAG_DRY_RUN; then
             if [ -n "$FLAG_LOCAL_DEBS" ]; then
                 info "Using .debs from $FLAG_LOCAL_DEBS..."
-                cp "$FLAG_LOCAL_DEBS"/scx-scheds_*_${ARCH}.deb "$DEB_DIR/" 2>/dev/null || fail "scx-scheds .deb not found in $FLAG_LOCAL_DEBS"
-                cp "$FLAG_LOCAL_DEBS"/scx-tools_*_${ARCH}.deb  "$DEB_DIR/" 2>/dev/null || fail "scx-tools .deb not found in $FLAG_LOCAL_DEBS"
+                cp "$FLAG_LOCAL_DEBS"/scx-scheds_*_"${ARCH}".deb "$DEB_DIR/" 2>/dev/null || fail "scx-scheds .deb not found in $FLAG_LOCAL_DEBS"
+                cp "$FLAG_LOCAL_DEBS"/scx-tools_*_"${ARCH}".deb  "$DEB_DIR/" 2>/dev/null || fail "scx-tools .deb not found in $FLAG_LOCAL_DEBS"
             else
                 TAG=$(fetch_latest_tag)
                 if [ -z "$TAG" ]; then
