@@ -17,7 +17,7 @@
   </description>
   <launchable type="desktop-id">scx-switcher.desktop</launchable>
   <url type="homepage">https://github.com/hmwassim/scx-switcher</url>
-  <project_license>GPL-3.0-or-later</project_license>
+  <project_license>MIT</project_license>
   <categories>
     <category>System</category>
   </categories>

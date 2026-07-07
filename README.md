@@ -37,3 +37,10 @@ Or use the install script (auto-downloads .debs, builds GUI from source):
 sudo apt install dpkg-dev debhelper cmake qt6-base-dev libgl-dev g++
 ./build-deb.sh
 ```
+
+## Credits
+
+SCX Switcher was inspired by:
+- [lgl-scxctl-manager](https://github.com/linuxgamerlife/lgl-scxctl-manager)
+- [scx-tool](https://github.com/xerolinux/scx-tool)
+- [scx-manager](https://github.com/CachyOS/scx-manager)
