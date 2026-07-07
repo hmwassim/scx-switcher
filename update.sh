@@ -5,15 +5,21 @@ set -euo pipefail
 # ── Config ──────────────────────────────────────────────────────────────
 REPO="https://github.com/hmwassim/scx-bundler"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-LOG="/tmp/scx-switcher-update.log"
-DEB_DIR="/tmp/scx-switcher-update-debs"
 ARCH="${ARCH:-$(dpkg --print-architecture 2>/dev/null || echo "amd64")}"
+
+# Temp workspace (mktemp avoids predictable /tmp races on multi-user systems)
+TMP_DIR=$(mktemp -d /tmp/scx-switcher-update.XXXXXX)
+LOG="$TMP_DIR/update.log"
+DEB_DIR="$TMP_DIR/debs"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()  { echo -e "  ${CYAN}::${NC} $*"; }
 ok()    { echo -e "  ${GREEN}OK${NC}"; }
 fail()  { echo -e "  ${RED}FAIL${NC} $*"; exit 1; }
 log()   { echo "[$(date '+%H:%M:%S')] $*" >> "$LOG"; }
+
+cleanup() { [ -n "${TMP_DIR:-}" ] && rm -rf "$TMP_DIR"; }
+trap cleanup EXIT
 
 for arg in "$@"; do
     case "$arg" in
@@ -89,8 +95,6 @@ sudo cp "$SCRIPT_DIR/data/scx_loader-kernel-check.conf" \
     /etc/systemd/system/scx_loader.service.d/kernel-check.conf
 sudo systemctl daemon-reload 2>/dev/null || true
 ok
-
-rm -rf "$DEB_DIR"
 
 echo ""
 info "Update to $TAG complete."

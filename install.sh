@@ -5,12 +5,15 @@ set -euo pipefail
 # ── Config ──────────────────────────────────────────────────────────────
 REPO="https://github.com/hmwassim/scx-bundler"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-LOG="/tmp/scx-switcher-install.log"
-STATE_DIR="/tmp/scx-switcher-state"
-STEP_FILE="$STATE_DIR/completed_steps"
-LOCK_FILE="/tmp/scx-switcher-install.lock"
-DEB_DIR="/tmp/scx-switcher-debs"
 ARCH="${ARCH:-$(dpkg --print-architecture 2>/dev/null || echo "amd64")}"
+
+# Temp workspace (mktemp avoids predictable /tmp races on multi-user systems)
+TMP_DIR=$(mktemp -d /tmp/scx-switcher.XXXXXX)
+LOG="$TMP_DIR/install.log"
+STATE_DIR="$TMP_DIR/state"
+DEB_DIR="$TMP_DIR/debs"
+STEP_FILE="$STATE_DIR/completed_steps"
+LOCK_DIR="/tmp/scx-switcher-install.lock"
 
 FLAG_RESUME=false
 FLAG_SKIP_GUI=false
@@ -44,7 +47,10 @@ fetch_latest_tag() {
     fi
 }
 
-cleanup() { rm -f "$LOCK_FILE"; }
+cleanup() {
+    [ -n "${TMP_DIR:-}" ] && rm -rf "$TMP_DIR"
+    rmdir "${LOCK_DIR:-/tmp/scx-switcher-install.lock}" 2>/dev/null || true
+}
 trap cleanup EXIT
 
 # ── Parse args ──────────────────────────────────────────────────────────
@@ -82,10 +88,9 @@ if [ "$(id -u)" -eq 0 ]; then
     fail "Do not run as root. The script uses sudo when needed."
 fi
 
-if [ -f "$LOCK_FILE" ]; then
-    fail "Another install is in progress (lock: $LOCK_FILE). Remove it if stuck."
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+    fail "Another install is in progress (lock: $LOCK_DIR). Remove it if stuck."
 fi
-echo "1" > "$LOCK_FILE"
 
 exec > >(tee -a "$LOG") 2>&1 || true
 log "=== scx-switcher install started ==="
@@ -234,7 +239,6 @@ fi
 # ── Step 6: Cleanup ─────────────────────────────────────────────────────
 step 6 "Cleanup"
 if ! $FLAG_DRY_RUN; then
-    rm -rf "$DEB_DIR" "$STATE_DIR" "$LOCK_FILE"
     echo ""
     info "scx-scheds, scx-tools, and scx-switcher GUI installed."
     info "Launch: scx-switcher"
