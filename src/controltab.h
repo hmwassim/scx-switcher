@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QCheckBox>
 #include <QComboBox>
 #include <QPushButton>
 #include <QWidget>
@@ -24,7 +23,6 @@ class ControlTab : public QWidget {
     void onSchedChanged();
     void onStartSwitch();
     void onStop();
-    void onPersistToggled(bool checked);
     void refreshList();
 
     private:
@@ -36,5 +34,4 @@ class ControlTab : public QWidget {
     QComboBox *m_modeCombo = nullptr;
     QPushButton *m_startBtn = nullptr;
     QPushButton *m_refreshBtn = nullptr;
-    QCheckBox *m_persistCb = nullptr;
 };

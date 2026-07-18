@@ -6,7 +6,6 @@
 
 #include <QGridLayout>
 #include <QLabel>
-#include <QTimer>
 #include <QVBoxLayout>
 #include <memory>
 
@@ -19,10 +18,6 @@ ControlTab::ControlTab(QWidget *parent) : QWidget(parent) {
             &ControlTab::operationInProgress);
     connect(m_schedCtrl, &SchedulerController::operationInProgress, this,
             [this](bool busy) { setControlsEnabled(!busy); });
-    connect(m_schedCtrl, &SchedulerController::persistToggled, this, [this](bool enabled) {
-        const QSignalBlocker blocker(m_persistCb);
-        m_persistCb->setChecked(enabled);
-    });
 
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
@@ -56,23 +51,12 @@ ControlTab::ControlTab(QWidget *parent) : QWidget(parent) {
     btnRow->addStretch();
     root->addLayout(btnRow);
 
-    m_persistCb = new QCheckBox("Make default at boot");
-    root->addWidget(m_persistCb);
-
     connect(m_schedCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &ControlTab::onSchedChanged);
     connect(m_startBtn, &QPushButton::clicked, this, &ControlTab::onStartSwitch);
     connect(m_refreshBtn, &QPushButton::clicked, this, &ControlTab::refreshList);
-    connect(m_persistCb, &QCheckBox::toggled, this, &ControlTab::onPersistToggled);
 
     refreshList();
-
-    auto *utils = ScxUtils::get();
-    connect(utils, &ScxUtils::serviceEnabled, this, [this](bool enabled) {
-        const QSignalBlocker blocker(m_persistCb);
-        m_persistCb->setChecked(enabled);
-    });
-    QTimer::singleShot(0, utils, &ScxUtils::checkServiceEnabled);
 }
 
 void ControlTab::stopScheduler() { onStop(); }
@@ -134,8 +118,6 @@ void ControlTab::onStartSwitch() {
 
 void ControlTab::onStop() { m_schedCtrl->stop(); }
 
-void ControlTab::onPersistToggled(bool checked) { m_schedCtrl->setPersist(checked); }
-
 void ControlTab::restoreState() {
     const auto [sched, mode] = ScxUtils::loadState();
     if (!sched.isEmpty()) {
@@ -156,5 +138,4 @@ void ControlTab::setControlsEnabled(bool enabled) {
     m_modeCombo->setEnabled(enabled);
     m_startBtn->setEnabled(enabled);
     m_refreshBtn->setEnabled(enabled);
-    m_persistCb->setEnabled(enabled);
 }

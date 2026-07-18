@@ -19,11 +19,8 @@ static const char *ERR_SWITCH_FAILED = "Switching the scheduler failed.\n\n"
 static const char *ERR_STOP_FAILED = "Stopping the scheduler failed.\n\n"
                                      "Try:  pkexec scxctl stop";
 
-static const char *ERR_PERSIST_ENABLE = "Could not enable auto-start.\n\n"
-                                        "Try:  sudo systemctl enable --now scx_loader.service";
-
-static const char *ERR_PERSIST_DISABLE = "Could not disable auto-start.\n\n"
-                                         "Try:  sudo systemctl disable --now scx_loader.service";
+static const char *ERR_PERSIST = "Could not save auto-start config.\n\n"
+                                  "Try:  sudo systemctl enable --now scx_loader.service";
 
 SchedulerController::SchedulerController(QObject *parent) : QObject(parent) {}
 
@@ -62,6 +59,14 @@ void SchedulerController::start(const QString &sched, const QString &mode) {
                     auto *app = AppController::get();
                     emit log(QString("Now running %1 (%2)")
                                  .arg(app->humanize(sched), app->humanizeMode(mode)));
+
+                    PrivOps::get()->enableService(
+                        [this](bool ok2, const QString &msg2) {
+                            if (!ok2)
+                                emit log(msg2.isEmpty()
+                                             ? ERR_PERSIST
+                                             : QString("Auto-start: %1").arg(msg2));
+                        });
                 } else {
                     emit log(msg.isEmpty() ? ERR_SWITCH_FAILED
                                            : QString("Failed: %1").arg(msg));
@@ -100,34 +105,4 @@ void SchedulerController::stop() {
         setEnabled(true);
         emit statusChanged();
     });
-}
-
-void SchedulerController::setPersist(bool enabled) {
-    if (!PrivOps::pkexecPresent()) {
-        emit log(ERR_NO_POLKIT);
-        emit persistToggled(!enabled);
-        return;
-    }
-
-    setEnabled(false);
-
-    auto onDone = [this, enabled](bool ok, const QString &msg) {
-        if (ok) {
-            emit log(enabled ? "Auto-start enabled \xe2\x80\x94 scheduler will apply at next boot"
-                             : "Auto-start disabled");
-        } else {
-            const char *canned = enabled ? ERR_PERSIST_ENABLE : ERR_PERSIST_DISABLE;
-            emit log(msg.isEmpty() ? canned : QString("Failed: %1").arg(msg));
-            emit persistToggled(!enabled);
-        }
-        setEnabled(true);
-    };
-
-    if (enabled) {
-        emit log("Enabling auto-start\xe2\x80\xa6");
-        PrivOps::get()->enableService(onDone);
-    } else {
-        emit log("Disabling auto-start\xe2\x80\xa6");
-        PrivOps::get()->disableService(onDone);
-    }
 }
