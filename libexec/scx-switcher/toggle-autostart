@@ -5,7 +5,7 @@ case "${1:-}" in
         exec systemctl enable --now scx_loader.service
         ;;
     disable)
-        exec systemctl disable --now scx_loader.service
+        exec systemctl disable scx_loader.service
         ;;
     *)
         echo "Usage: $0 {enable|disable}" >&2
