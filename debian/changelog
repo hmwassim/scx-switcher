@@ -1,3 +1,12 @@
+scx-switcher (1.1.4) trixie; urgency=medium
+
+  * Refactor: extract four deep modules (SchedCatalog, ProcessRunner,
+    AppController, SchedulerController) to improve architecture.
+  * Move tray lifecycle and log aggregation into AppController.
+  * Deduplicate SchedInfo — config.h now re-exports schedcatalog.h.
+
+ -- HM. Wassim <hmwassim95@gmail.com>  Sat, 18 Jul 2026 00:00:00 +0200
+
 scx-switcher (1.1.3) trixie; urgency=medium
 
   * Fix PrivOps kill()+start() reentrancy — async kill followed by immediate
