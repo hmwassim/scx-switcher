@@ -3,12 +3,9 @@
 #include <QCloseEvent>
 #include <QLabel>
 #include <QMainWindow>
-#include <QMenu>
 #include <QPushButton>
 #include <QStackedWidget>
-#include <QSystemTrayIcon>
 #include <QTextEdit>
-#include <QTimer>
 
 class AppController;
 class ControlTab;
@@ -35,13 +32,9 @@ class MainWindow : public QMainWindow {
     void buildUnsupportedPage();
     void buildSetupPage();
 
-    void appendLog(const QString &msg);
     void updateStatusBar(bool active, const QString &name, const QString &mode);
-    void setTray(bool active, const QString &schedName = {});
     void updateSchedInfo(const QString &bare);
     void toggleLog();
-
-    static QIcon trayIcon(const QColor &color);
 
     AppController *m_app = nullptr;
 
@@ -64,9 +57,6 @@ class MainWindow : public QMainWindow {
     // Collapsible log
     QToolButton *m_logToggle = nullptr;
     QTextEdit *m_log = nullptr;
-
-    QSystemTrayIcon *m_tray = nullptr;
-    QMenu *m_trayMenu = nullptr;
 
     bool m_kernelOk = false;
     bool m_schedActive = false;

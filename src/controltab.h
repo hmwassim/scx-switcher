@@ -31,7 +31,7 @@ class ControlTab : public QWidget {
     void restoreState();
     void setControlsEnabled(bool enabled);
 
-    SchedulerController *m_ctrl = nullptr;
+    SchedulerController *m_schedCtrl = nullptr;
     QComboBox *m_schedCombo = nullptr;
     QComboBox *m_modeCombo = nullptr;
     QPushButton *m_startBtn = nullptr;

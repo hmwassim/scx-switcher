@@ -11,15 +11,15 @@
 #include <memory>
 
 ControlTab::ControlTab(QWidget *parent) : QWidget(parent) {
-    m_ctrl = new SchedulerController(this);
+    m_schedCtrl = new SchedulerController(this);
 
-    connect(m_ctrl, &SchedulerController::log, this, &ControlTab::log);
-    connect(m_ctrl, &SchedulerController::statusChanged, this, &ControlTab::statusChanged);
-    connect(m_ctrl, &SchedulerController::operationInProgress, this,
+    connect(m_schedCtrl, &SchedulerController::log, this, &ControlTab::log);
+    connect(m_schedCtrl, &SchedulerController::statusChanged, this, &ControlTab::statusChanged);
+    connect(m_schedCtrl, &SchedulerController::operationInProgress, this,
             &ControlTab::operationInProgress);
-    connect(m_ctrl, &SchedulerController::operationInProgress, this,
+    connect(m_schedCtrl, &SchedulerController::operationInProgress, this,
             [this](bool busy) { setControlsEnabled(!busy); });
-    connect(m_ctrl, &SchedulerController::persistToggled, this, [this](bool enabled) {
+    connect(m_schedCtrl, &SchedulerController::persistToggled, this, [this](bool enabled) {
         const QSignalBlocker blocker(m_persistCb);
         m_persistCb->setChecked(enabled);
     });
@@ -129,12 +129,12 @@ void ControlTab::onSchedChanged() {
 void ControlTab::onStartSwitch() {
     const QString sched = m_schedCombo->currentData().toString();
     const QString mode = m_modeCombo->currentData().toString();
-    m_ctrl->start(sched, mode);
+    m_schedCtrl->start(sched, mode);
 }
 
-void ControlTab::onStop() { m_ctrl->stop(); }
+void ControlTab::onStop() { m_schedCtrl->stop(); }
 
-void ControlTab::onPersistToggled(bool checked) { m_ctrl->setPersist(checked); }
+void ControlTab::onPersistToggled(bool checked) { m_schedCtrl->setPersist(checked); }
 
 void ControlTab::restoreState() {
     const auto [sched, mode] = ScxUtils::loadState();

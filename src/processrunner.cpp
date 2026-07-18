@@ -84,14 +84,10 @@ void ProcessRunner::startPending() {
     m_pendingOp.reset();
     m_callback = std::move(op.callback);
 
-    if (!op.configContent.isEmpty()) {
+    if (!op.configContent.isEmpty())
         m_configContent = op.configContent;
-        m_timeout->start(m_timeoutMs);
-        m_proc->start(op.program, op.args);
-    } else {
-        m_timeout->start(m_timeoutMs);
-        m_proc->start(op.program, op.args);
-    }
+    m_timeout->start(m_timeoutMs);
+    m_proc->start(op.program, op.args);
 }
 
 void ProcessRunner::drainPending() { startPending(); }

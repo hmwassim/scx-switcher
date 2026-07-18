@@ -1,56 +1,25 @@
 #include "mainwindow.h"
-#include "config.h"
 #include "appcontroller.h"
+#include "config.h"
 #include "controltab.h"
 #include "privops.h"
 #include "scxutils.h"
 
 #include <QApplication>
-#include <QDateTime>
 #include <QFont>
 #include <QFontMetrics>
 #include <QFrame>
 #include <QGroupBox>
 #include <QHBoxLayout>
-#include <QIcon>
 #include <QLineEdit>
-#include <QPainter>
-#include <QPixmap>
+#include <QMenu>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QStackedWidget>
+#include <QSystemTrayIcon>
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <memory>
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-QIcon MainWindow::trayIcon(const QColor &color) {
-    QPixmap pm(16, 16);
-    pm.fill(Qt::transparent);
-    QPainter p(&pm);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    QPen pen(color, 1.0);
-    p.setPen(pen);
-    p.setBrush(Qt::NoBrush);
-    p.drawRoundedRect(QRectF(3.5, 3.5, 9, 9), 1.5, 1.5);
-
-    p.setPen(Qt::NoPen);
-    p.setBrush(color);
-
-    constexpr qreal pw = 1.5, ph = 1.5;
-    p.drawRect(QRectF(5.5, 1, pw, ph));
-    p.drawRect(QRectF(9, 1, pw, ph));
-    p.drawRect(QRectF(5.5, 13.5, pw, ph));
-    p.drawRect(QRectF(9, 13.5, pw, ph));
-    p.drawRect(QRectF(1, 5.5, ph, pw));
-    p.drawRect(QRectF(1, 9, ph, pw));
-    p.drawRect(QRectF(13.5, 5.5, ph, pw));
-    p.drawRect(QRectF(13.5, 9, ph, pw));
-
-    return QIcon(pm);
-}
 
 // ── Construction ──────────────────────────────────────────────────────────────
 
@@ -143,7 +112,7 @@ void MainWindow::buildShell() {
 
 void MainWindow::onKernelResult(bool supported, const QString &detail) {
     m_kernelOk = supported;
-    appendLog(detail);
+    m_app->appendLog(detail);
 
     if (!supported) {
         updateStatusBar(false, {}, {});
@@ -170,7 +139,7 @@ void MainWindow::buildNormalMode() {
     ctrlL->setContentsMargins(10, 10, 10, 10);
 
     m_ctrlTab = new ControlTab;
-    connect(m_ctrlTab, &ControlTab::log, this, &MainWindow::appendLog);
+    connect(m_ctrlTab, &ControlTab::log, m_app, &AppController::appendLog);
     connect(m_ctrlTab, &ControlTab::statusChanged, m_app, &AppController::refreshStatus);
     connect(m_ctrlTab, &ControlTab::operationInProgress, this, [this](bool inFlight) {
         m_opInFlight = inFlight;
@@ -263,35 +232,26 @@ void MainWindow::buildNormalMode() {
     m_contentStack->addWidget(m_normalPage);
     m_contentStack->setCurrentWidget(m_normalPage);
 
-    // ── System tray ────────────────────────────────────────────────────────────
-    if (QSystemTrayIcon::isSystemTrayAvailable()) {
-        m_tray = new QSystemTrayIcon(trayIcon(QColor("#888888")), this);
-        m_trayMenu = new QMenu;
-        m_trayMenu->addAction("Show", this, [this] {
-            show();
-            raise();
-            activateWindow();
-        });
-        m_trayMenu->addSeparator();
-        m_trayMenu->addAction("Quit", this, [] { QApplication::quit(); });
-        m_tray->setContextMenu(m_trayMenu);
-        m_tray->setToolTip(APP_NAME);
-        m_tray->show();
-        connect(m_tray, &QSystemTrayIcon::activated, this,
-                [this](QSystemTrayIcon::ActivationReason r) {
-                    if (r == QSystemTrayIcon::DoubleClick) {
-                        show();
-                        raise();
-                        activateWindow();
-                    }
-                });
-    }
+    // ── Log forwarding ─────────────────────────────────────────────────────────
+    connect(m_app, &AppController::logMessage, this, [this](const QString &msg) {
+        if (!m_log)
+            return;
+        m_log->append(msg);
+        m_log->verticalScrollBar()->setValue(m_log->verticalScrollBar()->maximum());
+    });
 
-    appendLog(QString("%1 v%2 ready").arg(APP_NAME, APP_VERSION));
+    // ── Tray show requests ─────────────────────────────────────────────────────
+    connect(m_app, &AppController::showRequested, this, [this] {
+        show();
+        raise();
+        activateWindow();
+    });
+
+    m_app->appendLog(QString("%1 v%2 ready").arg(APP_NAME, APP_VERSION));
 
     const QString pathWarn = PrivOps::checkPolicyPath();
     if (!pathWarn.isEmpty())
-        appendLog(pathWarn);
+        m_app->appendLog(pathWarn);
 
     // Connect AppController status updates to UI
     connect(m_app, &AppController::statusChanged, this, &MainWindow::updateStatusBar);
@@ -304,7 +264,7 @@ void MainWindow::buildNormalMode() {
     utils->listSchedulers();
 
     // Start status polling via AppController
-    m_app->startPolling();
+    m_app->start();
 }
 
 // ── Status ────────────────────────────────────────────────────────────────────
@@ -317,25 +277,11 @@ void MainWindow::updateStatusBar(bool active, const QString &name, const QString
                                   .arg(m_app->humanize(name), m_app->humanizeMode(mode)));
         m_stopBtn->setEnabled(!m_opInFlight);
         m_stopBtn->setVisible(true);
-        setTray(true, name);
     } else {
         m_dot->setStyleSheet("color: #cc0000;");
         m_statusText->setText("EEVDF (default)");
         m_stopBtn->setEnabled(false);
         m_stopBtn->setVisible(false);
-        setTray(false);
-    }
-}
-
-void MainWindow::setTray(bool active, const QString &schedName) {
-    if (!m_tray)
-        return;
-    if (active) {
-        m_tray->setIcon(trayIcon(QColor("#00cc00")));
-        m_tray->setToolTip(QString("SCX: %1").arg(m_app->humanize(schedName)));
-    } else {
-        m_tray->setIcon(trayIcon(QColor("#cc0000")));
-        m_tray->setToolTip("SCX: none (EEVDF)");
     }
 }
 
@@ -485,14 +431,6 @@ void MainWindow::toggleLog() {
     m_logToggle->setArrowType(m_logVisible ? Qt::DownArrow : Qt::RightArrow);
 }
 
-void MainWindow::appendLog(const QString &msg) {
-    if (!m_log)
-        return;
-    const QString ts = QDateTime::currentDateTime().toString("hh:mm:ss");
-    m_log->append(QString("[%1] %2").arg(ts, msg));
-    m_log->verticalScrollBar()->setValue(m_log->verticalScrollBar()->maximum());
-}
-
 void MainWindow::onStopClicked() {
     if (m_ctrlTab)
         m_ctrlTab->stopScheduler();
@@ -501,11 +439,11 @@ void MainWindow::onStopClicked() {
 // ── Window close ──────────────────────────────────────────────────────────────
 
 void MainWindow::closeEvent(QCloseEvent *event) {
-    if (m_tray && m_tray->isVisible() && QSystemTrayIcon::isSystemTrayAvailable()) {
+    if (QSystemTrayIcon::isSystemTrayAvailable()) {
         hide();
         event->ignore();
     } else {
-        m_app->stopPolling();
+        m_app->stop();
         event->accept();
     }
 }
