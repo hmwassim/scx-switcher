@@ -19,6 +19,10 @@ add_executable(scx-switcher
     src/controltab.h   src/controltab.cpp
     src/scxutils.h     src/scxutils.cpp
     src/privops.h      src/privops.cpp
+    src/processrunner.h src/processrunner.cpp
+    src/schedcatalog.h src/schedcatalog.cpp
+    src/appcontroller.h src/appcontroller.cpp
+    src/schedulercontroller.h src/schedulercontroller.cpp
     src/config.h
 )
 

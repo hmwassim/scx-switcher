@@ -10,8 +10,7 @@
 #include <QTextEdit>
 #include <QTimer>
 
-#include "config.h"
-
+class AppController;
 class ControlTab;
 class QToolButton;
 
@@ -27,7 +26,6 @@ class MainWindow : public QMainWindow {
     void closeEvent(QCloseEvent *event) override;
 
     private slots:
-    void refreshStatus();
     void onStopClicked();
 
     private:
@@ -44,6 +42,8 @@ class MainWindow : public QMainWindow {
     void toggleLog();
 
     static QIcon trayIcon(const QColor &color);
+
+    AppController *m_app = nullptr;
 
     // Status card
     QLabel *m_dot = nullptr;
@@ -67,9 +67,6 @@ class MainWindow : public QMainWindow {
 
     QSystemTrayIcon *m_tray = nullptr;
     QMenu *m_trayMenu = nullptr;
-
-    QTimer *m_pollTimer = nullptr;
-    QMetaObject::Connection m_statusConn;
 
     bool m_kernelOk = false;
     bool m_schedActive = false;

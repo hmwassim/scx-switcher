@@ -1,18 +1,29 @@
 #include "controltab.h"
-#include "config.h"
 #include "privops.h"
+#include "schedcatalog.h"
+#include "schedulercontroller.h"
 #include "scxutils.h"
 
 #include <QGridLayout>
-#include <QGroupBox>
-#include <QHBoxLayout>
 #include <QLabel>
-#include <QMessageBox>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <memory>
 
 ControlTab::ControlTab(QWidget *parent) : QWidget(parent) {
+    m_ctrl = new SchedulerController(this);
+
+    connect(m_ctrl, &SchedulerController::log, this, &ControlTab::log);
+    connect(m_ctrl, &SchedulerController::statusChanged, this, &ControlTab::statusChanged);
+    connect(m_ctrl, &SchedulerController::operationInProgress, this,
+            &ControlTab::operationInProgress);
+    connect(m_ctrl, &SchedulerController::operationInProgress, this,
+            [this](bool busy) { setControlsEnabled(!busy); });
+    connect(m_ctrl, &SchedulerController::persistToggled, this, [this](bool enabled) {
+        const QSignalBlocker blocker(m_persistCb);
+        m_persistCb->setChecked(enabled);
+    });
+
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(8);
@@ -77,8 +88,7 @@ void ControlTab::refreshList() {
             QStringList list = scheds;
             if (list.isEmpty()) {
                 emit log("scxctl list returned nothing \xe2\x80\x94 using built-in list");
-                for (const auto &si : ALL_SCHEDULERS)
-                    list << si.bare;
+                list = SchedCatalog::get()->allNames();
             }
 
             m_schedCombo->blockSignals(true);
@@ -86,8 +96,9 @@ void ControlTab::refreshList() {
             m_schedCombo->clear();
             m_modeCombo->clear();
 
+            auto *cat = SchedCatalog::get();
             for (const QString &bare : list)
-                m_schedCombo->addItem(humanizeSched(bare), bare);
+                m_schedCombo->addItem(cat->humanize(bare), bare);
 
             m_schedCombo->blockSignals(false);
             m_modeCombo->blockSignals(false);
@@ -105,135 +116,25 @@ void ControlTab::onSchedChanged() {
 
     emit schedulerSelected(bare);
 
-    static QHash<QString, QStringList> modeMap;
-    if (modeMap.isEmpty()) {
-        for (const auto &si : ALL_SCHEDULERS)
-            modeMap.insert(si.bare, si.modes);
-    }
-
-    QStringList modes = modeMap.value(bare);
-    if (modes.isEmpty())
-        modes = {"auto"};
+    auto *cat = SchedCatalog::get();
+    QStringList modes = cat->modes(bare);
 
     m_modeCombo->blockSignals(true);
     m_modeCombo->clear();
     for (const QString &m : modes)
-        m_modeCombo->addItem(humanizeMode(m), m);
+        m_modeCombo->addItem(cat->humanizeMode(m), m);
     m_modeCombo->blockSignals(false);
 }
 
 void ControlTab::onStartSwitch() {
     const QString sched = m_schedCombo->currentData().toString();
-    if (sched.isEmpty()) {
-        QMessageBox::warning(this, "No scheduler selected", "Please select a scheduler first.");
-        return;
-    }
     const QString mode = m_modeCombo->currentData().toString();
-
-    if (!PrivOps::pkexecPresent()) {
-        QMessageBox::warning(this, "pkexec not found", ERR_NO_POLKIT);
-        return;
-    }
-
-    setControlsEnabled(false);
-
-    auto *utils = ScxUtils::get();
-    auto conn = std::make_shared<QMetaObject::Connection>();
-
-    *conn = connect(
-        utils, &ScxUtils::statusReady, this, [this, conn, sched, mode](const SchedStatus &cur) {
-            disconnect(*conn);
-
-            if (cur.active && cur.name == sched && cur.mode == mode) {
-                ScxUtils::saveState(sched, mode);
-                emit log(QString("%1 (%2) is already running")
-                             .arg(humanizeSched(sched), humanizeMode(mode)));
-                setControlsEnabled(true);
-                return;
-            }
-
-            auto onDone = [this, sched, mode](bool ok, const QString &msg) {
-                if (ok) {
-                    ScxUtils::saveState(sched, mode);
-                    emit log(QString("Now running %1 (%2)")
-                                 .arg(humanizeSched(sched), humanizeMode(mode)));
-                    if (m_persistCb->isChecked()) {
-                        PrivOps::get()->writeConfig(
-                            sched, mode, [this](bool ok2, const QString &msg2) {
-                                emit log(ok2 ? "Auto-start config saved"
-                                             : QString("Config write failed: %1")
-                                                   .arg(msg2.isEmpty() ? "unknown error" : msg2));
-                            });
-                    }
-                } else {
-                    emit log(msg.isEmpty() ? ERR_SWITCH_FAILED : QString("Failed: %1").arg(msg));
-                }
-                setControlsEnabled(true);
-                emit statusChanged();
-            };
-
-            if (!cur.active) {
-                emit log(QString("Starting %1 (%2)\xe2\x80\xa6")
-                             .arg(humanizeSched(sched), humanizeMode(mode)));
-                PrivOps::get()->startScheduler(sched, mode, onDone);
-            } else {
-                emit log(QString("Switching to %1 (%2)\xe2\x80\xa6")
-                             .arg(humanizeSched(sched), humanizeMode(mode)));
-                PrivOps::get()->switchScheduler(sched, mode, onDone);
-            }
-        });
-
-    utils->queryStatus();
+    m_ctrl->start(sched, mode);
 }
 
-void ControlTab::onStop() {
-    if (!PrivOps::pkexecPresent()) {
-        QMessageBox::warning(this, "pkexec not found", ERR_NO_POLKIT);
-        return;
-    }
+void ControlTab::onStop() { m_ctrl->stop(); }
 
-    emit log("Stopping scheduler\xe2\x80\xa6");
-    setControlsEnabled(false);
-
-    PrivOps::get()->stopScheduler([this](bool ok, const QString &msg) {
-        emit log(ok ? "Stopped \xe2\x80\x94 back to EEVDF"
-                    : (msg.isEmpty() ? ERR_STOP_FAILED : QString("Failed: %1").arg(msg)));
-        setControlsEnabled(true);
-        emit statusChanged();
-    });
-}
-
-void ControlTab::onPersistToggled(bool checked) {
-    if (!PrivOps::pkexecPresent()) {
-        QMessageBox::warning(this, "pkexec not found", ERR_NO_POLKIT);
-        const QSignalBlocker blocker(m_persistCb);
-        m_persistCb->setChecked(!checked);
-        return;
-    }
-
-    setControlsEnabled(false);
-
-    auto onDone = [this, checked](bool ok, const QString &msg) {
-        if (ok) {
-            emit log(checked ? "Auto-start enabled \xe2\x80\x94 scheduler will apply at next boot"
-                             : "Auto-start disabled");
-        } else {
-            const char *canned = checked ? ERR_PERSIST_ENABLE : ERR_PERSIST_DISABLE;
-            emit log(msg.isEmpty() ? canned : QString("Failed: %1").arg(msg));
-            const QSignalBlocker blocker(m_persistCb);
-            m_persistCb->setChecked(!checked);
-        }
-        setControlsEnabled(true);
-    };
-
-    if (checked) {
-        emit log("Enabling auto-start\xe2\x80\xa6");
-        PrivOps::get()->enableService(onDone);
-    } else {
-        emit log("Disabling auto-start\xe2\x80\xa6");
-        PrivOps::get()->disableService(onDone);
-    }
-}
+void ControlTab::onPersistToggled(bool checked) { m_ctrl->setPersist(checked); }
 
 void ControlTab::restoreState() {
     const auto [sched, mode] = ScxUtils::loadState();
@@ -256,5 +157,4 @@ void ControlTab::setControlsEnabled(bool enabled) {
     m_startBtn->setEnabled(enabled);
     m_refreshBtn->setEnabled(enabled);
     m_persistCb->setEnabled(enabled);
-    emit operationInProgress(!enabled);
 }

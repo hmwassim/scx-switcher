@@ -5,9 +5,8 @@
 #include <QQueue>
 #include <QString>
 #include <QStringList>
-#include <QTimer>
 
-class QProcess;
+class ProcessRunner;
 
 struct SchedStatus {
     bool active = false;
@@ -59,7 +58,5 @@ class ScxUtils : public QObject {
 
     Op m_current = Op::None;
     QQueue<Job> m_queue;
-    QProcess *m_proc = nullptr;
-    QTimer *m_timeout = nullptr;
-    QString m_pendingError; // set by timeout handler, consumed by finished
+    ProcessRunner *m_runner = nullptr;
 };

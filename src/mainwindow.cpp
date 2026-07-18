@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "config.h"
+#include "appcontroller.h"
 #include "controltab.h"
 #include "privops.h"
 #include "scxutils.h"
@@ -22,8 +23,6 @@
 #include <QVBoxLayout>
 #include <memory>
 
-static constexpr int STATUS_POLL_INTERVAL_MS = 3000;
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 QIcon MainWindow::trayIcon(const QColor &color) {
@@ -41,16 +40,12 @@ QIcon MainWindow::trayIcon(const QColor &color) {
     p.setBrush(color);
 
     constexpr qreal pw = 1.5, ph = 1.5;
-    // Top
     p.drawRect(QRectF(5.5, 1, pw, ph));
     p.drawRect(QRectF(9, 1, pw, ph));
-    // Bottom
     p.drawRect(QRectF(5.5, 13.5, pw, ph));
     p.drawRect(QRectF(9, 13.5, pw, ph));
-    // Left
     p.drawRect(QRectF(1, 5.5, ph, pw));
     p.drawRect(QRectF(1, 9, ph, pw));
-    // Right
     p.drawRect(QRectF(13.5, 5.5, ph, pw));
     p.drawRect(QRectF(13.5, 9, ph, pw));
 
@@ -62,6 +57,8 @@ QIcon MainWindow::trayIcon(const QColor &color) {
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setWindowTitle(APP_NAME);
     setWindowFlags(windowFlags() & ~Qt::WindowMaximizeButtonHint);
+
+    m_app = AppController::get();
 
     buildShell();
 
@@ -84,7 +81,6 @@ void MainWindow::buildShell() {
     root->setSpacing(0);
     setCentralWidget(cw);
 
-    // Status card
     auto *card = new QFrame;
     card->setObjectName("statusCard");
     card->setStyleSheet("#statusCard { border: 1px solid #333;"
@@ -93,7 +89,7 @@ void MainWindow::buildShell() {
     cl->setContentsMargins(12, 10, 12, 10);
     cl->setSpacing(10);
 
-    m_dot = new QLabel("●");
+    m_dot = new QLabel("\u25cf");
     QFont df = m_dot->font();
     df.setPointSize(20);
     m_dot->setFont(df);
@@ -135,7 +131,6 @@ void MainWindow::buildShell() {
     root->addWidget(card);
     root->addSpacing(10);
 
-    // Content stack: loading, normal, unsupported, setup
     m_contentStack = new QStackedWidget;
     root->addWidget(m_contentStack, 1);
 
@@ -176,7 +171,7 @@ void MainWindow::buildNormalMode() {
 
     m_ctrlTab = new ControlTab;
     connect(m_ctrlTab, &ControlTab::log, this, &MainWindow::appendLog);
-    connect(m_ctrlTab, &ControlTab::statusChanged, this, &MainWindow::refreshStatus);
+    connect(m_ctrlTab, &ControlTab::statusChanged, m_app, &AppController::refreshStatus);
     connect(m_ctrlTab, &ControlTab::operationInProgress, this, [this](bool inFlight) {
         m_opInFlight = inFlight;
         m_stopBtn->setEnabled(m_schedActive && !m_opInFlight);
@@ -265,7 +260,6 @@ void MainWindow::buildNormalMode() {
 
     pageLayout->addWidget(logSection);
 
-    // Add normal page to stack and show it
     m_contentStack->addWidget(m_normalPage);
     m_contentStack->setCurrentWidget(m_normalPage);
 
@@ -295,39 +289,32 @@ void MainWindow::buildNormalMode() {
 
     appendLog(QString("%1 v%2 ready").arg(APP_NAME, APP_VERSION));
 
-    // Warn if scxctl path doesn't match the PolKit policy exec.path.
     const QString pathWarn = PrivOps::checkPolicyPath();
     if (!pathWarn.isEmpty())
         appendLog(pathWarn);
 
-    // Poll for schedulers list (loads into combo, triggers info update on selection)
+    // Connect AppController status updates to UI
+    connect(m_app, &AppController::statusChanged, this, &MainWindow::updateStatusBar);
+
+    // Trigger initial scheduler list load
     auto *utils = ScxUtils::get();
     auto conn = std::make_shared<QMetaObject::Connection>();
     *conn = connect(utils, &ScxUtils::schedulersListed, this,
                     [this, conn](const QStringList &) { disconnect(*conn); });
     utils->listSchedulers();
 
-    // Persistent connection for status updates
-    m_statusConn = connect(utils, &ScxUtils::statusReady, this, [this](const SchedStatus &s) {
-        updateStatusBar(s.active, s.name, s.mode);
-    });
-
-    m_pollTimer = new QTimer(this);
-    m_pollTimer->setInterval(STATUS_POLL_INTERVAL_MS);
-    connect(m_pollTimer, &QTimer::timeout, this, &MainWindow::refreshStatus);
-    refreshStatus();
-    m_pollTimer->start();
+    // Start status polling via AppController
+    m_app->startPolling();
 }
 
 // ── Status ────────────────────────────────────────────────────────────────────
-
-void MainWindow::refreshStatus() { ScxUtils::get()->queryStatus(); }
 
 void MainWindow::updateStatusBar(bool active, const QString &name, const QString &mode) {
     m_schedActive = active;
     if (active) {
         m_dot->setStyleSheet("color: #00cc00;");
-        m_statusText->setText(QString("%1 (%2)").arg(humanizeSched(name), humanizeMode(mode)));
+        m_statusText->setText(QString("%1 (%2)")
+                                  .arg(m_app->humanize(name), m_app->humanizeMode(mode)));
         m_stopBtn->setEnabled(!m_opInFlight);
         m_stopBtn->setVisible(true);
         setTray(true, name);
@@ -345,7 +332,7 @@ void MainWindow::setTray(bool active, const QString &schedName) {
         return;
     if (active) {
         m_tray->setIcon(trayIcon(QColor("#00cc00")));
-        m_tray->setToolTip(QString("SCX: %1").arg(humanizeSched(schedName)));
+        m_tray->setToolTip(QString("SCX: %1").arg(m_app->humanize(schedName)));
     } else {
         m_tray->setIcon(trayIcon(QColor("#cc0000")));
         m_tray->setToolTip("SCX: none (EEVDF)");
@@ -355,22 +342,21 @@ void MainWindow::setTray(bool active, const QString &schedName) {
 // ── Scheduler info ────────────────────────────────────────────────────────────
 
 void MainWindow::updateSchedInfo(const QString &bare) {
-    for (const auto &si : ALL_SCHEDULERS) {
-        if (si.bare != bare)
-            continue;
-        m_infoTitle->setText(si.display);
-        m_infoCat->setText(si.category);
-        m_infoDesc->setText(si.desc);
-        QStringList modeLabels;
-        for (const QString &m : si.modes)
-            modeLabels << humanizeMode(m);
-        m_infoModes->setText(QString("Modes: %1").arg(modeLabels.join(", ")));
+    const auto si = m_app->schedulerInfo(bare);
+    if (si.bare.isEmpty()) {
+        m_infoTitle->clear();
+        m_infoCat->clear();
+        m_infoDesc->clear();
+        m_infoModes->clear();
         return;
     }
-    m_infoTitle->clear();
-    m_infoCat->clear();
-    m_infoDesc->clear();
-    m_infoModes->clear();
+    m_infoTitle->setText(si.display);
+    m_infoCat->setText(si.category);
+    m_infoDesc->setText(si.desc);
+    QStringList modeLabels;
+    for (const QString &m : si.modes)
+        modeLabels << m_app->humanizeMode(m);
+    m_infoModes->setText(QString("Modes: %1").arg(modeLabels.join(", ")));
 }
 
 // ── Error pages ───────────────────────────────────────────────────────────────
@@ -519,8 +505,7 @@ void MainWindow::closeEvent(QCloseEvent *event) {
         hide();
         event->ignore();
     } else {
-        if (m_pollTimer)
-            m_pollTimer->stop();
+        m_app->stopPolling();
         event->accept();
     }
 }

@@ -1,5 +1,7 @@
 #include "scxutils.h"
 
+#include "processrunner.h"
+
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -7,13 +9,12 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QProcess>
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QSysInfo>
 
-static constexpr int QUERY_TIMEOUT_MS = 15000; // timeout for info queries
+static constexpr int QUERY_TIMEOUT_MS = 15000;
 
 ScxUtils *ScxUtils::get() {
     static ScxUtils *inst = new ScxUtils;
@@ -21,85 +22,7 @@ ScxUtils *ScxUtils::get() {
 }
 
 ScxUtils::ScxUtils(QObject *parent) : QObject(parent) {
-    m_proc = new QProcess(this);
-    m_proc->setProcessChannelMode(QProcess::SeparateChannels);
-
-    m_timeout = new QTimer(this);
-    m_timeout->setSingleShot(true);
-
-    connect(m_proc, &QProcess::finished, this, [this](int exit) {
-        m_timeout->stop();
-        const Op op = m_current;
-        m_current = Op::None;
-
-        if (op == Op::None) {
-            // errorOccurred(FailedToStart) already dispatched and called runNext.
-            return;
-        }
-
-        if (!m_pendingError.isEmpty()) {
-            const QString msg = m_pendingError;
-            m_pendingError.clear();
-            dispatchError(op, msg);
-            if (m_current == Op::None)
-                runNext();
-            return;
-        }
-
-        const QString out = QString::fromUtf8(m_proc->readAllStandardOutput()).trimmed();
-
-        switch (op) {
-        case Op::Kernel:
-            onKernel(out);
-            break;
-        case Op::Status:
-            onStatus(exit, out);
-            break;
-        case Op::List:
-            onList(exit, out);
-            break;
-        case Op::Service:
-            onService(exit, out);
-            break;
-        default:
-            break;
-        }
-
-        // If a signal handler re-entrantly enqueued + ran the next job,
-        // m_current is non-None and we must not call runNext again.
-        if (m_current == Op::None)
-            runNext();
-    });
-
-    connect(m_proc, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
-        if (m_current == Op::None)
-            return;
-        // FailedToStart: finished never fires, so we handle it here.
-        // Crashed: fall through — let finished handle it with the real exit status.
-        if (m_proc->error() != QProcess::FailedToStart)
-            return;
-
-        m_timeout->stop();
-        const Op op = m_current;
-        m_current = Op::None;
-
-        dispatchError(op, QString("Cannot determine %1")
-                              .arg(op == Op::Kernel ? "kernel version" : "process status"));
-        runNext();
-    });
-
-    connect(m_timeout, &QTimer::timeout, this, [this]() {
-        if (m_current == Op::None)
-            return;
-
-        // Record the error and kill the process. Do NOT emit or mutate
-        // m_current here — finished will fire asynchronously, see the
-        // pending error, and dispatch the result. This avoids re-entrancy
-        // from synchronous signal delivery (Bug 2).
-        m_pendingError = "Operation timed out";
-        if (m_proc->state() != QProcess::NotRunning)
-            m_proc->kill();
-    });
+    m_runner = new ProcessRunner(QUERY_TIMEOUT_MS, this);
 }
 
 bool ScxUtils::scxctlPresent() { return !QStandardPaths::findExecutable("scxctl").isEmpty(); }
@@ -122,8 +45,21 @@ void ScxUtils::runNext() {
         return;
     const auto job = m_queue.dequeue();
     m_current = job.op;
-    m_timeout->start(QUERY_TIMEOUT_MS);
-    m_proc->start(job.program, job.args);
+
+    m_runner->run(job.program, job.args, [this, op = job.op](int exit, const QString &output) {
+        if (op == Op::Kernel) {
+            onKernel(output);
+        } else if (op == Op::Status) {
+            onStatus(exit, output);
+        } else if (op == Op::List) {
+            onList(exit, output);
+        } else if (op == Op::Service) {
+            onService(exit, output);
+        }
+
+        m_current = Op::None;
+        runNext();
+    });
 }
 
 void ScxUtils::dispatchError(Op op, const QString &msg) {
