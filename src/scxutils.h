@@ -24,7 +24,6 @@ class ScxUtils : public QObject {
     void checkKernel();
     void queryStatus();
     void listSchedulers();
-    void checkServiceEnabled();
 
     static void saveState(const QString &sched, const QString &mode);
     static QPair<QString, QString> loadState();
@@ -33,12 +32,11 @@ class ScxUtils : public QObject {
     void kernelChecked(bool supported, const QString &detail);
     void statusReady(const SchedStatus &status);
     void schedulersListed(const QStringList &bareNames);
-    void serviceEnabled(bool enabled);
 
     private:
     explicit ScxUtils(QObject *parent = nullptr);
 
-    enum class Op { None, Kernel, Status, List, Service };
+    enum class Op { None, Kernel, Status, List };
 
     struct Job {
         Op op;
@@ -52,7 +50,6 @@ class ScxUtils : public QObject {
     void onKernel(const QString &out);
     void onStatus(int exit, const QString &out);
     void onList(int exit, const QString &out);
-    void onService(int exit, const QString &out);
 
     void dispatchError(Op op, const QString &msg);
 

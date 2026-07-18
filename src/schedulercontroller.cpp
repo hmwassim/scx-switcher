@@ -49,7 +49,7 @@ void SchedulerController::start(const QString &sched, const QString &mode) {
                 auto *app = AppController::get();
                 emit log(QString("%1 (%2) is already running")
                              .arg(app->humanize(sched), app->humanizeMode(mode)));
-                setEnabled(true);
+                autoEnable();
                 return;
             }
 
@@ -59,20 +59,13 @@ void SchedulerController::start(const QString &sched, const QString &mode) {
                     auto *app = AppController::get();
                     emit log(QString("Now running %1 (%2)")
                                  .arg(app->humanize(sched), app->humanizeMode(mode)));
-
-                    PrivOps::get()->enableService(
-                        [this](bool ok2, const QString &msg2) {
-                            if (!ok2)
-                                emit log(msg2.isEmpty()
-                                             ? ERR_PERSIST
-                                             : QString("Auto-start: %1").arg(msg2));
-                        });
+                    autoEnable();
                 } else {
                     emit log(msg.isEmpty() ? ERR_SWITCH_FAILED
                                            : QString("Failed: %1").arg(msg));
+                    setEnabled(true);
+                    emit statusChanged();
                 }
-                setEnabled(true);
-                emit statusChanged();
             };
 
             auto *app = AppController::get();
@@ -102,6 +95,16 @@ void SchedulerController::stop() {
     PrivOps::get()->stopScheduler([this](bool ok, const QString &msg) {
         emit log(ok ? "Stopped \xe2\x80\x94 back to EEVDF"
                     : (msg.isEmpty() ? ERR_STOP_FAILED : QString("Failed: %1").arg(msg)));
+        setEnabled(true);
+        emit statusChanged();
+    });
+}
+
+void SchedulerController::autoEnable() {
+    PrivOps::get()->enableService([this](bool ok, const QString &msg) {
+        if (!ok)
+            emit log(msg.isEmpty() ? ERR_PERSIST
+                                   : QString("Auto-start: %1").arg(msg));
         setEnabled(true);
         emit statusChanged();
     });

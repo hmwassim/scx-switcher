@@ -30,9 +30,6 @@ bool ScxUtils::scxctlPresent() { return !QStandardPaths::findExecutable("scxctl"
 void ScxUtils::checkKernel() { enqueue(Op::Kernel, "uname", {"-r"}); }
 void ScxUtils::queryStatus() { enqueue(Op::Status, "scxctl", {"get"}); }
 void ScxUtils::listSchedulers() { enqueue(Op::List, "scxctl", {"list"}); }
-void ScxUtils::checkServiceEnabled() {
-    enqueue(Op::Service, "systemctl", {"is-enabled", "scx_loader.service"});
-}
 
 void ScxUtils::enqueue(Op op, const QString &prog, const QStringList &args) {
     m_queue.enqueue({op, prog, args});
@@ -53,8 +50,6 @@ void ScxUtils::runNext() {
             onStatus(exit, output);
         } else if (op == Op::List) {
             onList(exit, output);
-        } else if (op == Op::Service) {
-            onService(exit, output);
         }
 
         m_current = Op::None;
@@ -74,9 +69,6 @@ void ScxUtils::dispatchError(Op op, const QString &msg) {
     }
     case Op::List:
         emit schedulersListed({});
-        break;
-    case Op::Service:
-        emit serviceEnabled(false);
         break;
     default:
         break;
@@ -157,10 +149,6 @@ void ScxUtils::onList(int exit, const QString &out) {
         list.append(name);
     }
     emit schedulersListed(list);
-}
-
-void ScxUtils::onService(int exit, const QString &out) {
-    emit serviceEnabled(exit == 0 && out.contains("enabled"));
 }
 
 static QString statePath() {
