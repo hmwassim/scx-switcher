@@ -2,7 +2,6 @@
 #include "appcontroller.h"
 #include "config.h"
 #include "controltab.h"
-#include "privops.h"
 #include "scxutils.h"
 
 #include <QApplication>
@@ -248,10 +247,6 @@ void MainWindow::buildNormalMode() {
     });
 
     m_app->appendLog(QString("%1 v%2 ready").arg(APP_NAME, APP_VERSION));
-
-    const QString pathWarn = PrivOps::checkPolicyPath();
-    if (!pathWarn.isEmpty())
-        m_app->appendLog(pathWarn);
 
     // Connect AppController status updates to UI
     connect(m_app, &AppController::statusChanged, this, &MainWindow::updateStatusBar);

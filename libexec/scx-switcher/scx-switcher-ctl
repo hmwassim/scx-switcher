@@ -1,0 +1,37 @@
+#!/bin/sh
+# scx-switcher — single privileged entry point (run via pkexec).
+# One PolKit action, one password prompt per operation.
+set -e
+
+usage() {
+    echo "Usage: $0 {start|switch} SCHED MODE TOML_MODE" >&2
+    echo "       $0 persist SCHED TOML_MODE" >&2
+    echo "       $0 stop" >&2
+    exit 2
+}
+
+write_config() {
+    printf 'default_sched = "scx_%s"\ndefault_mode  = "%s"\n' "$1" "$2" \
+        > /etc/scx_loader/config.toml
+}
+
+case "${1:-}" in
+    start|switch)
+        [ "$#" -eq 4 ] || usage
+        scxctl "$1" --sched "$2" --mode "$3"
+        write_config "$2" "$4"
+        systemctl enable --now scx_loader.service
+        ;;
+    persist)
+        [ "$#" -eq 3 ] || usage
+        write_config "$2" "$3"
+        systemctl enable --now scx_loader.service
+        ;;
+    stop)
+        [ "$#" -eq 1 ] || usage
+        scxctl stop
+        ;;
+    *)
+        usage
+        ;;
+esac
