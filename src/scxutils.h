@@ -51,8 +51,6 @@ class ScxUtils : public QObject {
     void onStatus(int exit, const QString &out);
     void onList(int exit, const QString &out);
 
-    void dispatchError(Op op, const QString &msg);
-
     Op m_current = Op::None;
     QQueue<Job> m_queue;
     ProcessRunner *m_runner = nullptr;

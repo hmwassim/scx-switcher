@@ -59,8 +59,6 @@ void PrivOps::stopScheduler(Callback cb) { run({SCXCTL, "stop"}, std::move(cb));
 
 void PrivOps::enableService(Callback cb) { run({TOGGLE_AUTOSTART, "enable"}, std::move(cb)); }
 
-void PrivOps::disableService(Callback cb) { run({TOGGLE_AUTOSTART, "disable"}, std::move(cb)); }
-
 void PrivOps::writeConfig(const QString &sched, const QString &mode, Callback cb) {
     const QString content = QString("default_sched = \"scx_%1\"\n"
                                     "default_mode  = \"%2\"\n")

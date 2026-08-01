@@ -18,5 +18,5 @@ class SchedulerController : public QObject {
 
     private:
     void setEnabled(bool enabled);
-    void autoEnable();
+    void autoEnable(const QString &sched, const QString &mode);
 };

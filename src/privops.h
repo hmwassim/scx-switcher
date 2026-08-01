@@ -20,7 +20,6 @@ class PrivOps : public QObject {
     void switchScheduler(const QString &sched, const QString &mode, Callback cb = {});
     void stopScheduler(Callback cb = {});
     void enableService(Callback cb = {});
-    void disableService(Callback cb = {});
     void writeConfig(const QString &sched, const QString &mode, Callback cb = {});
 
     private:

@@ -19,8 +19,11 @@ static const char *ERR_SWITCH_FAILED = "Switching the scheduler failed.\n\n"
 static const char *ERR_STOP_FAILED = "Stopping the scheduler failed.\n\n"
                                      "Try:  pkexec scxctl stop";
 
-static const char *ERR_PERSIST = "Could not save auto-start config.\n\n"
-                                  "Try:  sudo systemctl enable --now scx_loader.service";
+static const char *ERR_CONFIG = "Could not write the boot scheduler config.\n\n"
+                                "Try:  pkexec /usr/libexec/scx-switcher/write-config";
+
+static const char *ERR_PERSIST = "Could not enable auto-start.\n\n"
+                                 "Try:  sudo systemctl enable --now scx_loader.service";
 
 SchedulerController::SchedulerController(QObject *parent) : QObject(parent) {}
 
@@ -49,7 +52,7 @@ void SchedulerController::start(const QString &sched, const QString &mode) {
                 auto *app = AppController::get();
                 emit log(QString("%1 (%2) is already running")
                              .arg(app->humanize(sched), app->humanizeMode(mode)));
-                autoEnable();
+                autoEnable(sched, mode);
                 return;
             }
 
@@ -59,7 +62,7 @@ void SchedulerController::start(const QString &sched, const QString &mode) {
                     auto *app = AppController::get();
                     emit log(QString("Now running %1 (%2)")
                                  .arg(app->humanize(sched), app->humanizeMode(mode)));
-                    autoEnable();
+                    autoEnable(sched, mode);
                 } else {
                     emit log(msg.isEmpty() ? ERR_SWITCH_FAILED
                                            : QString("Failed: %1").arg(msg));
@@ -100,12 +103,21 @@ void SchedulerController::stop() {
     });
 }
 
-void SchedulerController::autoEnable() {
-    PrivOps::get()->enableService([this](bool ok, const QString &msg) {
-        if (!ok)
-            emit log(msg.isEmpty() ? ERR_PERSIST
-                                   : QString("Auto-start: %1").arg(msg));
-        setEnabled(true);
-        emit statusChanged();
+void SchedulerController::autoEnable(const QString &sched, const QString &mode) {
+    PrivOps::get()->writeConfig(sched, mode, [this](bool ok, const QString &msg) {
+        if (!ok) {
+            emit log(msg.isEmpty() ? ERR_CONFIG : QString("Boot config: %1").arg(msg));
+            setEnabled(true);
+            emit statusChanged();
+            return;
+        }
+
+        PrivOps::get()->enableService([this](bool ok2, const QString &msg2) {
+            if (!ok2)
+                emit log(msg2.isEmpty() ? ERR_PERSIST
+                                        : QString("Auto-start: %1").arg(msg2));
+            setEnabled(true);
+            emit statusChanged();
+        });
     });
 }

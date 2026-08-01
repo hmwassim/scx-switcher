@@ -92,8 +92,6 @@ void ProcessRunner::startPending() {
 
 void ProcessRunner::drainPending() { startPending(); }
 
-bool ProcessRunner::isRunning() const { return m_proc->state() != QProcess::NotRunning; }
-
 void ProcessRunner::run(const QString &program, const QStringList &args, Callback cb) {
     if (m_proc->state() != QProcess::NotRunning) {
         cancel();

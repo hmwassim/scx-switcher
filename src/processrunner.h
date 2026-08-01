@@ -22,8 +22,6 @@ class ProcessRunner : public QObject {
                         Callback cb = {});
     void cancel();
 
-    bool isRunning() const;
-
     private:
     struct PendingOp {
         QString program;

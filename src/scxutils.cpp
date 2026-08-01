@@ -57,24 +57,6 @@ void ScxUtils::runNext() {
     });
 }
 
-void ScxUtils::dispatchError(Op op, const QString &msg) {
-    switch (op) {
-    case Op::Kernel:
-        emit kernelChecked(false, msg);
-        break;
-    case Op::Status: {
-        SchedStatus s;
-        emit statusReady(s);
-        break;
-    }
-    case Op::List:
-        emit schedulersListed({});
-        break;
-    default:
-        break;
-    }
-}
-
 void ScxUtils::onKernel(const QString &out) {
     QString ver = out.isEmpty() ? QSysInfo::kernelVersion() : out;
     const QStringList parts = ver.split('.');
