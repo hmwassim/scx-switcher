@@ -5,7 +5,7 @@
 #include <QStandardPaths>
 
 static constexpr const char *PKEXEC = "pkexec";
-static constexpr const char *CTL = "/usr/libexec/scx-switcher/scx-switcher-ctl";
+static constexpr const char *CTL = SCX_CTL_PATH;
 
 // ── Singleton ─────────────────────────────────────────────────────────────────
 

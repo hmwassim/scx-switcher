@@ -5,6 +5,21 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
+include(GNUInstallDirs)
+
+# The privileged helper must live alongside the app and the PolKit policy must
+# reference the exact same path, so derive it from the configured prefix.
+# "libexec" is kept literal (not CMAKE_INSTALL_LIBEXECDIR, which resolves to
+# "lib" on Debian) to avoid relocating the helper on existing installs.
+set(SCX_LIBEXECDIR "${CMAKE_INSTALL_PREFIX}/libexec/scx-switcher")
+set(SCX_CTL_FULL "${SCX_LIBEXECDIR}/scx-switcher-ctl")
+
+configure_file(
+    policies/io.github.hmwassim.scx_switcher.policy.in
+    ${CMAKE_CURRENT_BINARY_DIR}/io.github.hmwassim.scx_switcher.policy
+    @ONLY
+)
+
 # Network is required for QLocalServer/QLocalSocket (single-instance guard)
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
 
@@ -30,16 +45,18 @@ target_link_libraries(scx-switcher PRIVATE Qt6::Core Qt6::Widgets Qt6::Network)
 
 target_compile_definitions(scx-switcher PRIVATE
     APP_VERSION_STR="${PROJECT_VERSION}"
+    SCX_CTL_PATH="${SCX_CTL_FULL}"
 )
 
 target_compile_options(scx-switcher PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
 )
 
-install(TARGETS scx-switcher DESTINATION bin)
-install(FILES data/scx-switcher.desktop         DESTINATION share/applications)
-install(FILES data/scx-switcher.metainfo.xml    DESTINATION share/metainfo)
-install(FILES data/scx-switcher.svg             DESTINATION share/icons/hicolor/scalable/apps)
-install(FILES data/scx_loader-kernel-check.conf DESTINATION share/scx-switcher)
-install(FILES policies/io.github.hmwassim.scx_switcher.policy  DESTINATION share/polkit-1/actions)
-install(PROGRAMS libexec/scx-switcher/scx-switcher-ctl DESTINATION libexec/scx-switcher)
+install(TARGETS scx-switcher DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES data/scx-switcher.desktop         DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES data/scx-switcher.metainfo.xml    DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
+install(FILES data/scx-switcher.svg             DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+install(FILES data/scx_loader-kernel-check.conf DESTINATION ${CMAKE_INSTALL_DATADIR}/scx-switcher)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/io.github.hmwassim.scx_switcher.policy
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions)
+install(PROGRAMS libexec/scx-switcher/scx-switcher-ctl DESTINATION ${SCX_LIBEXECDIR})

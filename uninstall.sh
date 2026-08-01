@@ -55,6 +55,12 @@ info "Removing GUI binary..."
 sudo rm -f /usr/bin/scx-switcher
 ok
 
+# Remove privileged helper
+info "Removing privileged helper..."
+sudo rm -f /usr/libexec/scx-switcher/scx-switcher-ctl
+sudo rmdir /usr/libexec/scx-switcher 2>/dev/null || true
+ok
+
 # Remove desktop/metainfo/icons
 info "Removing desktop files..."
 sudo rm -f /usr/share/applications/scx-switcher.desktop
