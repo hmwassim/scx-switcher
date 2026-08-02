@@ -18,25 +18,21 @@ class ProcessRunner : public QObject {
     ~ProcessRunner();
 
     void run(const QString &program, const QStringList &args, Callback cb = {});
-    void runWithContent(const QString &program, const QStringList &args, const QString &content,
-                        Callback cb = {});
-    void cancel();
 
     private:
     struct PendingOp {
         QString program;
         QStringList args;
-        QString configContent;
         Callback callback;
     };
 
     void startPending();
     void drainPending();
+    void cancel();
 
     int m_timeoutMs;
     QProcess *m_proc = nullptr;
     QTimer *m_timeout = nullptr;
-    QString m_configContent;
     Callback m_callback;
     std::optional<PendingOp> m_pendingOp;
 };

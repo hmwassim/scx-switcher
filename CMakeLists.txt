@@ -39,7 +39,6 @@ add_executable(scx-switcher
     src/schedcatalog.h src/schedcatalog.cpp
     src/appcontroller.h src/appcontroller.cpp
     src/schedulercontroller.h src/schedulercontroller.cpp
-    src/config.h
 )
 
 target_link_libraries(scx-switcher PRIVATE Qt6::Core Qt6::Widgets Qt6::Network)

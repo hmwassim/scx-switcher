@@ -67,26 +67,7 @@ DistroInfo::DistroInfo() {
 
 // ── Accessors ─────────────────────────────────────────────────────────────────
 
-QString DistroInfo::id() const { return m_id; }
 QString DistroInfo::prettyName() const { return m_prettyName; }
-DistroInfo::PkgMgr DistroInfo::pkgMgr() const { return m_pkgMgr; }
-
-QString DistroInfo::pkgMgrName() const {
-    switch (m_pkgMgr) {
-    case PkgMgr::Apt: return "apt";
-    case PkgMgr::Dnf: return "dnf";
-    case PkgMgr::Zypper: return "zypper";
-    case PkgMgr::Pacman: return "pacman";
-    case PkgMgr::Eopkg: return "eopkg";
-    case PkgMgr::Apk: return "apk";
-    case PkgMgr::Unknown: return {};
-    }
-    return {};
-}
-
-bool DistroInfo::systemdActive() const {
-    return QFile::exists(QStringLiteral("/run/systemd/system"));
-}
 
 DistroInfo::Escalation DistroInfo::escalation() const {
     static const bool hasPkexec = !QStandardPaths::findExecutable("pkexec").isEmpty();

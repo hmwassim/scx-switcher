@@ -18,12 +18,7 @@ class DistroInfo {
 
     static DistroInfo *get();
 
-    QString id() const;
     QString prettyName() const;
-    PkgMgr pkgMgr() const;
-    QString pkgMgrName() const;
-
-    bool systemdActive() const;
 
     Escalation escalation() const;
     QString escalationTool() const;

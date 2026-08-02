@@ -1,8 +1,8 @@
 #include "mainwindow.h"
 #include "appcontroller.h"
-#include "config.h"
 #include "controltab.h"
 #include "distro.h"
+#include "schedcatalog.h"
 #include "scxutils.h"
 
 #include <QApplication>

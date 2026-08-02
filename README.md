@@ -33,7 +33,8 @@ Individual steps:
 sudo cmake --install build
 
 # Install only the scx packages for your distribution, e.g.:
-sudo apt install scx-scheds scx-tools        # Debian / Ubuntu
+# Debian/Ubuntu have no scx-scheds/scx-tools packages — use ./install.sh
+# (source build) or install scx-bundler .debs. Other distros:
 sudo dnf copr enable -y bieszczaders/kernel-cachyos-addons
 sudo dnf install scx-scheds scx-tools        # Fedora (CachyOS COPR)
 sudo pacman -S scx-scheds scx-tools          # Arch
