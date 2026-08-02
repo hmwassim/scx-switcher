@@ -1,5 +1,5 @@
 #!/bin/sh
-# scx-switcher — single privileged entry point (run via pkexec).
+# scx-switcher — single privileged entry point (run via pkexec or sudo).
 # One PolKit action, one password prompt per operation.
 set -e
 
@@ -10,7 +10,19 @@ usage() {
     exit 2
 }
 
+require_loader_service() {
+    command -v systemctl >/dev/null 2>&1 || {
+        echo "systemd (systemctl) not found — scx_loader requires systemd" >&2
+        exit 1
+    }
+    systemctl list-unit-files scx_loader.service >/dev/null 2>&1 || {
+        echo "scx_loader.service not found — is scx-tools installed?" >&2
+        exit 1
+    }
+}
+
 write_config() {
+    mkdir -p /etc/scx_loader
     printf 'default_sched = "scx_%s"\ndefault_mode  = "%s"\n' "$1" "$2" \
         > /etc/scx_loader/config.toml
 }
@@ -20,16 +32,19 @@ case "${1:-}" in
         [ "$#" -eq 4 ] || usage
         scxctl "$1" --sched "$2" --mode "$3"
         write_config "$2" "$4"
+        require_loader_service
         systemctl enable --now scx_loader.service
         ;;
     persist)
         [ "$#" -eq 3 ] || usage
         write_config "$2" "$3"
+        require_loader_service
         systemctl enable --now scx_loader.service
         ;;
     stop)
         [ "$#" -eq 1 ] || usage
         scxctl stop
+        mkdir -p /etc/scx_loader
         : > /etc/scx_loader/config.toml
         ;;
     *)

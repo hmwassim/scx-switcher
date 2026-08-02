@@ -2,6 +2,7 @@
 #include "appcontroller.h"
 #include "config.h"
 #include "controltab.h"
+#include "distro.h"
 #include "scxutils.h"
 
 #include <QApplication>
@@ -334,22 +335,32 @@ void MainWindow::buildUnsupportedPage() {
     sub->setStyleSheet("color: #999;");
     fl->addWidget(sub);
 
-    auto *hint = new QLabel("Install a supported kernel on Debian 13 Trixie:");
+    auto *hint = new QLabel;
     hint->setAlignment(Qt::AlignCenter);
     hint->setStyleSheet("color: #ccc;");
+    hint->setWordWrap(true);
     fl->addWidget(hint);
 
-    const QString cmd =
-        "sudo apt install -t trixie-backports linux-image-amd64 linux-headers-amd64";
-    auto *cmdEdit = new QLineEdit(cmd);
-    cmdEdit->setReadOnly(true);
-    cmdEdit->setAlignment(Qt::AlignCenter);
-    cmdEdit->setStyleSheet("QLineEdit { background: #2a2a2a; color: #88dd88;"
-                           "border: 1px solid #555; border-radius: 4px;"
-                           "padding: 6px 10px; font-family: monospace; font-size: 11px; }");
-    QFontMetrics fm(cmdEdit->font());
-    cmdEdit->setMinimumWidth(fm.horizontalAdvance(cmd) + 32);
-    fl->addWidget(cmdEdit);
+    const QString cmd = DistroInfo::get()->kernelUpgradeHint();
+    if (cmd.isEmpty()) {
+        hint->setText("Install a Linux 6.12+ kernel with sched-ext using your package "
+                      "manager, then reboot.");
+    } else {
+        const QString distro = DistroInfo::get()->prettyName();
+        hint->setText(distro.isEmpty() ? "Install a supported kernel:"
+                                       : QString("Install a supported kernel on %1:")
+                                             .arg(distro));
+
+        auto *cmdEdit = new QLineEdit(cmd);
+        cmdEdit->setReadOnly(true);
+        cmdEdit->setAlignment(Qt::AlignCenter);
+        cmdEdit->setStyleSheet("QLineEdit { background: #2a2a2a; color: #88dd88;"
+                               "border: 1px solid #555; border-radius: 4px;"
+                               "padding: 6px 10px; font-family: monospace; font-size: 11px; }");
+        QFontMetrics fm(cmdEdit->font());
+        cmdEdit->setMinimumWidth(fm.horizontalAdvance(cmd) + 32);
+        fl->addWidget(cmdEdit);
+    }
 
     auto *note = new QLabel("Reboot after installing to activate the new kernel.");
     note->setAlignment(Qt::AlignCenter);
@@ -388,22 +399,35 @@ void MainWindow::buildSetupPage() {
     title->setAlignment(Qt::AlignCenter);
     fl->addWidget(title);
 
-    auto *hint =
-        new QLabel("Install <b>scx-scheds</b> and <b>scx-tools</b> from the Debian repositories:");
+    auto *hint = new QLabel;
     hint->setAlignment(Qt::AlignCenter);
     hint->setStyleSheet("color: #ccc;");
+    hint->setWordWrap(true);
     fl->addWidget(hint);
 
-    const QString cmd = "sudo apt install scx-scheds scx-tools";
-    auto *cmdEdit = new QLineEdit(cmd);
-    cmdEdit->setReadOnly(true);
-    cmdEdit->setAlignment(Qt::AlignCenter);
-    cmdEdit->setStyleSheet("QLineEdit { background: #2a2a2a; color: #88dd88;"
-                           "border: 1px solid #555; border-radius: 4px;"
-                           "padding: 6px 10px; font-family: monospace; font-size: 11px; }");
-    QFontMetrics fm(cmdEdit->font());
-    cmdEdit->setMinimumWidth(fm.horizontalAdvance(cmd) + 32);
-    fl->addWidget(cmdEdit);
+    const QStringList pkgs = DistroInfo::get()->scxPackages();
+    const QString cmd = DistroInfo::get()->installCommand(pkgs);
+    if (!cmd.isEmpty()) {
+        const QString distro = DistroInfo::get()->prettyName();
+        hint->setText(QString("Install <b>%1</b>%2:")
+                          .arg(pkgs.join("</b> and <b>"),
+                               distro.isEmpty() ? " for your distribution"
+                                                : QString(" for %1").arg(distro)));
+
+        auto *cmdEdit = new QLineEdit(cmd);
+        cmdEdit->setReadOnly(true);
+        cmdEdit->setAlignment(Qt::AlignCenter);
+        cmdEdit->setStyleSheet("QLineEdit { background: #2a2a2a; color: #88dd88;"
+                               "border: 1px solid #555; border-radius: 4px;"
+                               "padding: 6px 10px; font-family: monospace; font-size: 11px; }");
+        QFontMetrics fm(cmdEdit->font());
+        cmdEdit->setMinimumWidth(fm.horizontalAdvance(cmd) + 32);
+        fl->addWidget(cmdEdit);
+    } else {
+        hint->setText("Install <b>scx-scheds</b> and <b>scx-tools</b> (providing scxctl and "
+                      "scx_loader) for your distribution, or run <b>install.sh</b> in this "
+                      "repository to build from source.");
+    }
 
     auto *btn = new QPushButton("Exit");
     btn->setMaximumWidth(90);

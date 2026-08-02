@@ -1,15 +1,12 @@
 #include "schedulercontroller.h"
 
 #include "appcontroller.h"
+#include "distro.h"
 #include "privops.h"
 #include "schedcatalog.h"
 #include "scxutils.h"
 
 #include <memory>
-
-static const char *ERR_NO_POLKIT = "pkexec was not found.\n\n"
-                                    "Install it with:\n  sudo apt install polkitd pkexec\n\n"
-                                    "Then log out and back in so a PolKit agent starts.";
 
 static const char *ERR_SWITCH_FAILED = "Switching the scheduler failed.\n\n"
                                        "Common causes:\n"
@@ -17,12 +14,22 @@ static const char *ERR_SWITCH_FAILED = "Switching the scheduler failed.\n\n"
                                        "  - scx_loader.service is not active\n\n"
                                        "Try:  systemctl status scx_loader.service";
 
-static const char *ERR_STOP_FAILED = "Stopping the scheduler failed.\n\n"
-                                     "Try:  pkexec scxctl stop";
+static QString errNoEscalation() {
+    return "No privilege escalation tool (pkexec or sudo) was found.\n\n" +
+           DistroInfo::get()->escalationHint();
+}
+
+static QString errStopFailed() {
+    const QString tool = PrivOps::escalationTool();
+    return tool.isEmpty()
+               ? QStringLiteral("Stopping the scheduler failed.")
+               : QStringLiteral("Stopping the scheduler failed.\n\nTry:  %1 scxctl stop")
+                     .arg(tool);
+}
 
 static const char *ERR_PERSIST = "The scheduler switched, but its boot configuration could "
                                  "not be saved.\n\n"
-                                 "Try:  sudo systemctl enable --now scx_loader.service";
+                                 "Run as root:  systemctl enable --now scx_loader.service";
 
 SchedulerController::SchedulerController(QObject *parent) : QObject(parent) {}
 
@@ -32,8 +39,8 @@ void SchedulerController::start(const QString &sched, const QString &mode) {
     if (sched.isEmpty())
         return;
 
-    if (!PrivOps::pkexecPresent()) {
-        emit log(ERR_NO_POLKIT);
+    if (!PrivOps::escalationAvailable()) {
+        emit log(errNoEscalation());
         return;
     }
 
@@ -87,8 +94,8 @@ void SchedulerController::start(const QString &sched, const QString &mode) {
 }
 
 void SchedulerController::stop() {
-    if (!PrivOps::pkexecPresent()) {
-        emit log(ERR_NO_POLKIT);
+    if (!PrivOps::escalationAvailable()) {
+        emit log(errNoEscalation());
         return;
     }
 
@@ -97,7 +104,7 @@ void SchedulerController::stop() {
 
     PrivOps::get()->runCtl({"stop"}, [this](bool ok, const QString &msg) {
         emit log(ok ? "Stopped \xe2\x80\x94 back to EEVDF"
-                    : (msg.isEmpty() ? ERR_STOP_FAILED : QString("Failed: %1").arg(msg)));
+                    : (msg.isEmpty() ? errStopFailed() : QString("Failed: %1").arg(msg)));
         setEnabled(true);
         emit statusChanged();
     });

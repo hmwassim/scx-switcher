@@ -78,26 +78,27 @@ void ScxUtils::onKernel(const QString &out) {
 
 void ScxUtils::onStatus(int exit, const QString &out) {
     SchedStatus s;
-    if (exit != 0 || out.isEmpty() || out.contains("not running", Qt::CaseInsensitive) ||
-        !out.startsWith("running", Qt::CaseInsensitive)) {
+    if (exit != 0 || out.isEmpty() || out.contains("not running", Qt::CaseInsensitive)) {
         emit statusReady(s);
         return;
     }
 
-    const QStringList words = out.split(' ', Qt::SkipEmptyParts);
-    if (words.size() < 2) {
+    // Tolerate minor scxctl output-format drift across versions:
+    //   "running scx_bpfland in auto mode"  (1.x)
+    //   "running bpfland in auto mode"      (variants without the scx_ prefix)
+    //   "running: bpfland"                  (compact variants)
+    static const QRegularExpression re(
+        R"(^\s*running\s*[:]?\s*(?:scx_)?([A-Za-z0-9_]+)(?:\s+in\s+([A-Za-z0-9_]+)\s+mode)?)",
+        QRegularExpression::CaseInsensitiveOption);
+    const auto m = re.match(out);
+    if (!m.hasMatch()) {
         emit statusReady(s);
         return;
     }
 
     s.active = true;
-    s.name = words[1];
-    if (s.name.startsWith("scx_"))
-        s.name = s.name.mid(4);
-
-    const QRegularExpression re("in (\\S+) mode", QRegularExpression::CaseInsensitiveOption);
-    const auto m = re.match(out);
-    s.mode = m.hasMatch() ? m.captured(1).toLower() : "auto";
+    s.name = m.captured(1);
+    s.mode = m.captured(2).isEmpty() ? QStringLiteral("auto") : m.captured(2).toLower();
 
     emit statusReady(s);
 }

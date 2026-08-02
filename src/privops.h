@@ -13,7 +13,8 @@ class PrivOps : public QObject {
     using Callback = std::function<void(bool ok, const QString &msg)>;
 
     static PrivOps *get();
-    static bool pkexecPresent();
+    static bool escalationAvailable();
+    static QString escalationTool();
 
     void runCtl(const QStringList &args, Callback cb = {});
 

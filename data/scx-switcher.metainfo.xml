@@ -6,7 +6,7 @@
   <description>
     <p>
       SCX Switcher provides a Qt6 GUI for managing sched-ext BPF CPU
-      schedulers on Debian 13+ (Trixie).
+      schedulers on Linux.
     </p>
     <p>
       Start, stop, and switch schedulers with one click, view live
