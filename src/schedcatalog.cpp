@@ -90,6 +90,15 @@ SchedCatalog::SchedCatalog()
            "predictable performance.",
            {"auto", "server"}},
 
+          {"mlfq",
+           "MLFQ",
+           "Gaming / Desktop",
+           "Multilevel feedback queue scheduler. Three vtime-ordered queues (interactive, "
+           "unclassified, CPU-bound) with an EMA interactivity gauge that promotes short-sleeping "
+           "tasks and demotes sustained CPU consumers. Deliberately knob-free \u2014 no "
+           "command-line flags change behaviour, so there's no mode to misconfigure.",
+           {"auto"}},
+
           {"p2dq",
            "P2DQ",
            "Mixed Desktop / Server",
@@ -136,7 +145,8 @@ SchedCatalog::SchedCatalog()
       m_displayOverrides({
           {"bpfland", "BPFland"}, {"beerland", "Beerland"}, {"cake", "Cake"},
           {"flow", "Flow"},       {"forge", "Forge"},       {"lavd", "LAVD"},
-          {"p2dq", "P2DQ"},       {"rlfifo", "RLFIFO"},     {"rustland", "Rustland"},
+          {"mlfq", "MLFQ"},       {"p2dq", "P2DQ"},         {"rlfifo", "RLFIFO"},
+          {"rustland", "Rustland"},
       }) {}
 
 SchedInfo SchedCatalog::find(const QString &bare) const {

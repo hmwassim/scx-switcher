@@ -1,3 +1,14 @@
+scx-switcher (1.1.5) trixie; urgency=medium
+
+  * Add support for scx_mlfq scheduler (new in upstream scx v1.1.3);
+    Gaming / Desktop category, auto-only mode — the scheduler is
+    deliberately knob-free and takes no CLI flags that change behaviour.
+  * Verify scx v1.1.3 scheduler roster against ALL_SCHEDULERS: scx_wd40
+    was dropped upstream but was never present in our list, so no
+    removal was required.
+
+ -- HM. Wassim <hmwassim95@gmail.com>  Fri, 18 Sep 2026 00:00:00 +0000
+
 scx-switcher (1.1.4) trixie; urgency=medium
 
   * Refactor: extract four deep modules (SchedCatalog, ProcessRunner,

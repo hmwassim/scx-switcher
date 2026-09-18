@@ -5,6 +5,13 @@ All notable changes to SCX Switcher will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.5] - 2026-09-18
+
+### Added
+- Add support for scx_mlfq scheduler, new in upstream scx v1.1.3
+  (Gaming / Desktop category, auto-only mode — the scheduler is
+  deliberately knob-free and has no CLI flags that change behaviour)
+
 ## [1.1.3] - 2026-07-07
 
 ### Fixed
