@@ -1,11 +1,10 @@
 [Desktop Entry]
+Type=Application
 Name=SCX Switcher
-Comment=Manage sched-ext CPU schedulers
+Comment=Switch sched_ext CPU schedulers
 Exec=scx-switcher
 Icon=scx-switcher
 Terminal=false
-Type=Application
 Categories=System;Utility;
 Keywords=scheduler;scx;sched-ext;cpu;
 StartupNotify=true
-X-GNOME-UsesNotifications=true

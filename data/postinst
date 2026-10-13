@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+# Pick up the scx_loader drop-in shipped in this package.
+if [ "$1" = configure ] && [ -d /run/systemd/system ]; then
+    systemctl daemon-reload || true
+fi

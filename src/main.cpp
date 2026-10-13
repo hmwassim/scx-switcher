@@ -3,45 +3,39 @@
 #include <QApplication>
 #include <QLocalServer>
 #include <QLocalSocket>
-
-static constexpr int SINGLE_INSTANCE_TIMEOUT_MS = 300;
+#include <QSystemTrayIcon>
+#include <unistd.h>
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
-    app.setApplicationName(MainWindow::APP_NAME);
-    app.setApplicationVersion(MainWindow::APP_VERSION);
-    app.setOrganizationName("scx-switcher");
-    app.setQuitOnLastWindowClosed(false);
+    app.setApplicationName("scx-switcher");
+    app.setApplicationDisplayName("SCX Switcher");
+    app.setApplicationVersion(APP_VERSION);
+    app.setDesktopFileName("io.github.hmwassim.scx_switcher");
+    app.setWindowIcon(QIcon::fromTheme("scx-switcher"));
+    app.setQuitOnLastWindowClosed(!QSystemTrayIcon::isSystemTrayAvailable());
 
-    // Try to connect to an already-running instance.
-    {
-        QLocalSocket probe;
-        probe.connectToServer("scx-switcher");
-        if (probe.waitForConnected(SINGLE_INSTANCE_TIMEOUT_MS)) {
-            probe.disconnectFromServer();
-            return 0;
-        }
-    }
+    // Single instance: if one is already running, ask it to show itself.
+    const QString socket = QString("scx-switcher-%1").arg(getuid());
+    QLocalSocket probe;
+    probe.connectToServer(socket);
+    if (probe.waitForConnected(300))
+        return 0;
 
-    // Become the server.
-    QLocalServer::removeServer("scx-switcher");
+    QLocalServer::removeServer(socket);
     QLocalServer server;
-    if (!server.listen("scx-switcher"))
-        return 1;
+    server.setSocketOptions(QLocalServer::UserAccessOption);
+    server.listen(socket);
 
-    MainWindow w;
-    w.show();
+    MainWindow window;
+    window.show();
 
-    // When a second instance connects, raise our window and clean up the socket.
-    QObject::connect(&server, &QLocalServer::newConnection, &w, [&] {
-        w.show();
-        w.raise();
-        w.activateWindow();
-        // Must drain pending connections or they accumulate and leak file descriptors.
-        while (server.hasPendingConnections()) {
-            if (auto *s = server.nextPendingConnection())
-                s->deleteLater();
-        }
+    QObject::connect(&server, &QLocalServer::newConnection, &window, [&] {
+        while (auto *conn = server.nextPendingConnection())
+            conn->deleteLater();
+        window.show();
+        window.raise();
+        window.activateWindow();
     });
 
     return app.exec();

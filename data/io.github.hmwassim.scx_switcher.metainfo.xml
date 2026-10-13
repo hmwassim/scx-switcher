@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.hmwassim.scx_switcher</id>
+  <name>SCX Switcher</name>
+  <summary>Switch sched_ext CPU schedulers</summary>
+  <description>
+    <p>
+      Start, stop and switch sched_ext BPF CPU schedulers, see which one is
+      running, and keep your choice across reboots through scx_loader.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.hmwassim.scx_switcher.desktop</launchable>
+  <url type="homepage">https://github.com/hmwassim/scx-switcher</url>
+  <project_license>MIT</project_license>
+  <metadata_license>CC0-1.0</metadata_license>
+  <content_rating type="oars-1.1"/>
+  <developer id="io.github.hmwassim">
+    <name>HM. Wassim</name>
+  </developer>
+  <categories>
+    <category>System</category>
+  </categories>
+</component>
