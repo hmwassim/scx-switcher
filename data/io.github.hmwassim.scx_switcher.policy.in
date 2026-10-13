@@ -7,14 +7,14 @@
   <vendor_url>https://github.com/hmwassim/scx-switcher</vendor_url>
   <icon_name>scx-switcher</icon_name>
 
-  <action id="io.github.hmwassim.scx_switcher.ctl">
-    <description>Manage sched-ext CPU scheduler</description>
-    <message>Authentication is required to manage the CPU scheduler</message>
+  <action id="io.github.hmwassim.scx_switcher.helper">
+    <description>Change the sched_ext CPU scheduler</description>
+    <message>Authentication is required to change the CPU scheduler</message>
     <defaults>
       <allow_any>auth_admin_keep</allow_any>
       <allow_inactive>auth_admin_keep</allow_inactive>
       <allow_active>auth_admin_keep</allow_active>
     </defaults>
-    <annotate key="org.freedesktop.policykit.exec.path">@SCX_CTL_FULL@</annotate>
+    <annotate key="org.freedesktop.policykit.exec.path">@HELPER_PATH@</annotate>
   </action>
 </policyconfig>

@@ -1,0 +1,143 @@
+#!/bin/sh
+# Privileged helper for scx-switcher, run through pkexec.
+#   apply SCHED MODE   run SCHED in MODE now and make it the boot default
+#   stop               stop the scheduler and clear the boot default
+#   repair             get a broken scx_loader running again
+#
+# The first output line is a one-line summary; anything after it is detail.
+set -eu
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+CONFIG=/etc/scx_loader/config.toml
+HEADER='# default_sched and default_mode are managed by scx-switcher'
+UNIT=scx_loader.service
+
+die() {
+    echo "$1"
+    exit 1
+}
+
+fail() {
+    echo "$1"
+    # Root can read the journal; the user usually can't, so pass it along.
+    journalctl -b -u "$UNIT" -n 12 --no-pager -o cat 2>/dev/null || true
+    exit 1
+}
+
+# Rewrites the boot default, keeping everything else in the file. Never
+# leaves the file empty: scx_loader refuses to start on an empty config.
+set_defaults() {
+    mkdir -p "${CONFIG%/*}"
+    tmp=$(mktemp "$CONFIG.XXXXXX")
+    echo "$HEADER" > "$tmp"
+    if [ $# -eq 2 ]; then
+        printf 'default_sched = "scx_%s"\ndefault_mode = "%s"\n' "$1" "$2" >> "$tmp"
+    fi
+    if [ -f "$CONFIG" ]; then
+        grep -Ev -e '^[[:space:]]*default_(sched|mode)[[:space:]]*=' -e "^$HEADER\$" "$CONFIG" >> "$tmp" || true
+    fi
+    chmod 644 "$tmp"
+    mv "$tmp" "$CONFIG"
+}
+
+restart_loader() {
+    systemctl reset-failed "$UNIT" 2>/dev/null || true
+    systemctl restart "$UNIT" 2>/dev/null
+}
+
+ensure_loader() {
+    systemctl enable "$UNIT" > /dev/null 2>&1 || fail "Could not enable $UNIT"
+    systemctl is-active -q "$UNIT" || restart_loader || fail "scx_loader failed to start. Use Repair."
+}
+
+loader_running() {
+    scxctl get 2>/dev/null | grep -qi '^running'
+}
+
+# The loader reports a scheduler as running even after it has died, and
+# `scxctl switch` returns before the new one is loaded, so ask the kernel.
+# enable_seq goes up each time a scheduler attaches.
+SYSFS=/sys/kernel/sched_ext
+
+enable_seq() {
+    cat "$SYSFS/enable_seq" 2>/dev/null || echo 0
+}
+
+attached() {
+    [ "$(cat "$SYSFS/state" 2>/dev/null)" = enabled ]
+}
+
+# Waits for a scheduler newer than enable_seq $1 to attach, then makes sure
+# it is still the same one a second later. Some take seconds to load.
+wait_attached() {
+    i=0
+    until [ "$(enable_seq)" -gt "$1" ] && attached; do
+        i=$((i + 1))
+        [ $i -le 150 ] || return 1
+        sleep 0.1
+    done
+    seq=$(enable_seq)
+    sleep 1
+    attached && [ "$(enable_seq)" = "$seq" ]
+}
+
+case "${1:-}" in
+apply)
+    [ $# -eq 3 ] || die "usage: $0 apply SCHED MODE"
+    sched=$2
+    mode=$3
+    case $sched in
+    '' | *[!a-z0-9_]*) die "Invalid scheduler name: $sched" ;;
+    esac
+    case $mode in
+    auto) toml=Auto ;;
+    gaming) toml=Gaming ;;
+    lowlatency) toml=LowLatency ;;
+    powersave) toml=PowerSave ;;
+    server) toml=Server ;;
+    *) die "Invalid mode: $mode" ;;
+    esac
+
+    [ -s "$CONFIG" ] || set_defaults
+    ensure_loader
+    # Only names scx_loader knows are valid in its config; anything else
+    # would stop it from starting at the next boot.
+    scxctl list | grep -qF "\"$sched\"" || die "scx_loader does not support $sched"
+
+    before=$(enable_seq)
+    if loader_running; then
+        scxctl switch --sched "$sched" --mode "$mode" > /dev/null || fail "scx_loader could not switch to $sched"
+    else
+        scxctl start --sched "$sched" --mode "$mode" > /dev/null || fail "scx_loader could not start $sched"
+    fi
+    if ! wait_attached "$before"; then
+        scxctl stop > /dev/null 2>&1 || true
+        fail "$sched exited right after starting. The boot default was not changed."
+    fi
+    set_defaults "$sched" "$toml"
+    ;;
+stop)
+    [ $# -eq 1 ] || die "usage: $0 stop"
+    set_defaults
+    if loader_running; then
+        scxctl stop > /dev/null || fail "scx_loader could not stop the scheduler"
+    fi
+    ;;
+repair)
+    [ $# -eq 1 ] || die "usage: $0 repair"
+    # The boot default is the usual culprit: an unknown scheduler name.
+    set_defaults
+    systemctl enable "$UNIT" > /dev/null 2>&1 || true
+    if ! restart_loader; then
+        mv "$CONFIG" "$CONFIG.broken"
+        set_defaults
+        restart_loader || fail "scx_loader still fails to start with a fresh config."
+        echo "scx_loader is running again. The invalid config was moved to $CONFIG.broken"
+        exit 0
+    fi
+    echo "scx_loader is running again"
+    ;;
+*)
+    die "usage: $0 apply SCHED MODE | stop | repair"
+    ;;
+esac
