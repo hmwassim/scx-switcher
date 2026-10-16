@@ -32,17 +32,21 @@ static const QList<Component> COMPONENTS = {
      "saturated, then switches to a deadline policy on a shared queue so interactive tasks run "
      "promptly. Batches CPU wakeups to cut overhead.",
      "Desktops and servers alike; it adapts to the workload."},
+    {"scx_eevdf", "EEVDF", true, "General purpose", M::Experimental,
+     "Port of the kernel's own EEVDF scheduler to sched_ext: virtual deadlines, per-runqueue "
+     "lag and fair.c's placement rules, several of which can be switched off to compare them. "
+     "Needs cid-form sched_ext (Linux 7.2 or newer).",
+     "Comparing sched_ext against the kernel's default scheduler, on desktops or servers."},
     {"scx_flash", "Flash", true, "Low latency", M::Production,
      "Earliest-deadline-first scheduling with a dynamic latency weight: tasks that give up the "
      "CPU before their slice ends are prioritised over tasks that use it all. Fair and "
      "predictable even when overcommitted.",
      "Latency-sensitive work such as multimedia and real-time audio."},
-    {"scx_flow", "Flow", true, "Deterministic", M::Production,
-     "Budget-driven, with zero heuristics: tasks earn budget while sleeping and spend it while "
-     "running. Each task gets an equal share of its CPU, so there's no starvation or priority "
-     "inversion.",
-     "Deterministic workloads (embedded, robotics, automotive), and desktops, where "
-     "interactive tasks separate from bulk work naturally."},
+    {"scx_flow", "Flow", true, "Low latency", M::Unstated,
+     "Runs the task with the earliest deadline or virtual deadline first, using a per-task "
+     "prediction of the next CPU burst. RED-style admission and tiered queues let short bursts "
+     "reach a CPU sooner without starving bulk work. Needs Linux 7.2 or newer.",
+     "Latency-sensitive apps, general desktop use and mixed batch workloads."},
     {"scx_forge", "Forge", true, "AI research", M::NotForProduction,
      "Base scheduler meant to be rewritten in place by the LLM-driven scx_forge_agent, which "
      "builds, runs and scores each policy change. Not meant to be used unchanged.",
@@ -56,23 +60,33 @@ static const QList<Component> COMPONENTS = {
      "Sorts tasks into layers (for example by cgroup) and gives each layer its own policy, such "
      "as guaranteed CPU share on chosen cores. Needs a JSON layer config to be useful.",
      "Tuned deployments that need priority access to cores for specific services."},
+    {"scx_mavd", "MAVD", true, "Gaming", M::Experimental,
+     "Fork of LAVD converted to cid-form sched_ext with all state in a BPF arena, keeping LAVD's "
+     "policy. Still under validation. Needs Linux 7.2 or newer.",
+     "Trying LAVD's gaming-focused policy on the cid-form interface."},
     {"scx_mitosis", "Mitosis", true, "Datacenter", M::Unstated,
      "Cgroup-aware scheduler that isolates workloads into cells of dedicated CPUs, with the goal "
      "of safely overcommitting datacenter servers.",
      "Servers running several isolated workloads."},
-    {"scx_mlfq", "MLFQ", true, "Desktop", M::Experimental,
-     "Multilevel feedback queue: interactive, unclassified and CPU-bound queues ordered by "
-     "virtual deadline. An interactivity gauge promotes tasks that sleep and demotes ones that "
-     "keep running.",
+    {"scx_mlfq", "MLFQ", true, "Desktop", M::Production,
+     "Knob-free multilevel feedback queue: interactive, unclassified and CPU-bound queues "
+     "ordered by virtual deadline. A model trained on the machine's own behaviour predicts each "
+     "task's next CPU burst, and tasks submitting GPU work count as interactive. Needs Linux 7.1 "
+     "or newer.",
      "Gaming, desktop responsiveness during updates or compiles, mixed laptop workloads."},
+    {"scx_nitosis", "Nitosis", true, "Datacenter", M::Experimental,
+     "Fork of Mitosis converted to cid-form sched_ext, aiming to become a root scheduler that "
+     "other schedulers plug into, one per cell. Needs a kernel with sub-scheduler support "
+     "(expected in 7.4).",
+     "Developing sub-scheduling on servers running several isolated workloads."},
     {"scx_p2dq", "P2DQ", true, "General purpose", M::Production,
      "Pick-two load balancing across caches and NUMA nodes, with all decisions made in BPF. "
      "Tested on services at Meta with performance similar to EEVDF.",
      "Gaming, desktop, batch and server work, with tuning per use case."},
     {"scx_pandemonium", "Pandemonium", true, "Adaptive", M::Unstated,
-     "Gives every task a latency tier by its role and adapts in real time: CoDel-style stall "
-     "detection, topology-aware placement, and work stealing that only crosses a cache "
-     "boundary when it pays off.",
+     "Has no task classifier: slice, placement and preemption are priced against what each task "
+     "is owed, measured live. CoDel-style stall detection, topology-aware placement, and work "
+     "stealing that only crosses a cache boundary when it pays off.",
      "Desktops wanting low wakeup latency under heavy CPU load."},
     {"scx_rlfifo", "RLFIFO", true, "Template", M::NotForProduction,
      "Minimal round-robin scheduler running in user space on scx_rustland_core: FIFO order with "
