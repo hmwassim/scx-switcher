@@ -1,0 +1,5 @@
+scx-switcher (3.0.0-1) trixie; urgency=medium
+
+  * Rewrite on scx.service, with the September layout and a tray icon.
+
+ -- hmwassim <hmwassim@tuta.io>  Mon, 09 Nov 2026 10:00:00 +0100

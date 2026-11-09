@@ -1,0 +1,28 @@
+Source: scx-switcher
+Section: admin
+Priority: optional
+Maintainer: hmwassim <hmwassim@tuta.io>
+Build-Depends:
+ debhelper-compat (= 13),
+ cmake,
+ qt6-base-dev,
+Standards-Version: 4.7.2
+Rules-Requires-Root: no
+Homepage: https://github.com/hmwassim/scx-switcher
+
+Package: scx-switcher
+Architecture: amd64
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ scx-scheds,
+ pkexec,
+ polkitd,
+ systemd,
+Description: switch sched_ext CPU schedulers
+ A small Qt window and tray icon that shows which sched_ext scheduler is
+ running, starts, stops or switches one through scx.service, picks a mode
+ for it, and decides whether it starts at boot.
+ .
+ Changes go through one root helper run with pkexec. Nothing is enabled at
+ boot unless the user asks for it.
