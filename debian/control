@@ -15,10 +15,11 @@ Architecture: amd64
 Depends:
  ${shlibs:Depends},
  ${misc:Depends},
- scx-scheds,
  pkexec,
  polkitd,
  systemd,
+Recommends:
+ scx-scheds,
 Description: switch sched_ext CPU schedulers
  A small Qt window and tray icon that shows which sched_ext scheduler is
  running, starts, stops or switches one through scx.service, picks a mode
