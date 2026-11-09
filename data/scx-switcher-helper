@@ -1,0 +1,157 @@
+#!/bin/sh
+#   start SCHED on|off [OPTIONS...]   run SCHED through scx.service, boot start on or off
+#   boot on|off                       only change boot start
+#   stop                              stop scx.service
+#   stop-loader                       stop scx_loader.service
+#
+# Exit codes: 0 done, 1 the scheduler failed and the previous state is back, 2 bad input.
+set -eu
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+CONFIG=/etc/default/scx
+UNIT=scx.service
+LOADER=scx_loader.service
+SYSFS=/sys/kernel/sched_ext
+MAX_OPTIONS=32
+
+usage() {
+   echo "usage: $0 start SCHED on|off [OPTIONS...] | boot on|off | stop | stop-loader"
+   exit 2
+}
+
+invalid() {
+   echo "$1"
+   exit 2
+}
+
+enable_seq() {
+   cat "$SYSFS/enable_seq" 2>/dev/null || echo 0
+}
+
+attached() {
+   [ "$(cat "$SYSFS/state" 2>/dev/null)" = enabled ]
+}
+
+# Waiting for the kernel to confirm, some schedulers take seconds to load
+wait_attached() {
+   i=0
+   until [ "$(enable_seq)" -gt "$1" ] && attached; do
+      i=$((i + 1))
+      [ $i -le 150 ] || return 1
+      sleep 0.1
+   done
+   seq=$(enable_seq)
+   sleep 1
+   attached && [ "$(enable_seq)" = "$seq" ]
+}
+
+write_config() {
+   tmp=$(mktemp "$CONFIG.XXXXXX")
+   printf 'SCX_SCHEDULER=%s\n' "$1" >"$tmp"
+   shift
+   [ $# -eq 0 ] || printf "SCX_FLAGS='%s'\n" "$*" >>"$tmp"
+   chmod 644 "$tmp"
+   mv "$tmp" "$CONFIG"
+}
+
+set_boot() {
+   case $1 in
+   on) systemctl enable -q "$UNIT" ;;
+   off) systemctl disable -q "$UNIT" ;;
+   esac
+}
+
+check_boot() {
+   case $1 in
+   on | off) ;;
+   *) usage ;;
+   esac
+}
+
+check_sched() {
+   case $1 in
+   scx_*) ;;
+   *) invalid "Not a sched_ext scheduler: $1" ;;
+   esac
+   case $1 in
+   *[!a-z0-9_-]*) invalid "Not a sched_ext scheduler: $1" ;;
+   esac
+   command -v "$1" >/dev/null 2>&1 || invalid "$1 is not installed"
+}
+
+check_options() {
+   [ $# -le $MAX_OPTIONS ] || invalid "Too many options, the most is $MAX_OPTIONS"
+   for option; do
+      case $option in
+      '' | *[!A-Za-z0-9=.,:/+_-]*) invalid "Options can only use letters, digits and - _ = . , : / +" ;;
+      esac
+      [ ${#option} -le 256 ] || invalid "An option is longer than 256 characters"
+   done
+}
+
+case "${1:-}" in
+start)
+   [ $# -ge 3 ] || usage
+   sched=$2
+   boot=$3
+   shift 3
+   check_sched "$sched"
+   check_boot "$boot"
+   check_options "$@"
+
+   backup=''
+   if [ -f "$CONFIG" ]; then
+      backup=$(mktemp)
+      cp "$CONFIG" "$backup"
+   fi
+   was_active=no
+   systemctl is-active -q "$UNIT" && was_active=yes
+   before=$(enable_seq)
+   since=$(date +%s)
+
+   write_config "$sched" "$@"
+   systemctl reset-failed "$UNIT" 2>/dev/null || true
+   if systemctl restart "$UNIT" 2>/dev/null && wait_attached "$before"; then
+      [ -z "$backup" ] || rm -f "$backup"
+      set_boot "$boot"
+      echo "Started [$sched]"
+      echo "Boot [$boot]"
+      exit 0
+   fi
+
+   # Putting the previous scheduler back, the new one never settled
+   log=$(journalctl -u "$UNIT" --since "@$since" --no-pager -o cat 2>/dev/null | tail -n 15)
+   systemctl stop "$UNIT" 2>/dev/null || true
+   systemctl reset-failed "$UNIT" 2>/dev/null || true
+   if [ -n "$backup" ]; then
+      mv "$backup" "$CONFIG"
+      chmod 644 "$CONFIG"
+   fi
+   if [ $was_active = yes ] && systemctl start "$UNIT" 2>/dev/null; then
+      echo "Failed [$sched] restored [$(sed -n 's/^SCX_SCHEDULER=//p' "$CONFIG")]"
+   else
+      echo "Failed [$sched]"
+   fi
+   [ -z "$log" ] || echo "$log"
+   exit 1
+   ;;
+boot)
+   [ $# -eq 2 ] || usage
+   check_boot "$2"
+   set_boot "$2"
+   echo "Boot [$2]"
+   ;;
+stop)
+   [ $# -eq 1 ] || usage
+   systemctl stop "$UNIT"
+   echo "Stopped [$UNIT]"
+   ;;
+stop-loader)
+   [ $# -eq 1 ] || usage
+   systemctl stop "$LOADER"
+   echo "Stopped [$LOADER]"
+   ;;
+*)
+   usage
+   ;;
+esac
