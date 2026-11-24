@@ -1,3 +1,10 @@
+scx-switcher (3.0.1-1) trixie; urgency=medium
+
+  * Sync the scheduler list with scx 1.1.5: add scx_panda, scx_rburst,
+    scx_reevdf, scx_rlocal and scx_rvtime, drop scx_rustland and scx_rlfifo.
+
+ -- hmwassim <hmwassim@tuta.io>  Tue, 24 Nov 2026 23:56:05 +0100
+
 scx-switcher (3.0.0-1) trixie; urgency=medium
 
   * Rewrite on scx.service, with the September layout and a tray icon.
