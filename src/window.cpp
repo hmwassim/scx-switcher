@@ -462,9 +462,8 @@ void Window::updateStatus() {
    }
    if (m_schedulers.isEmpty()) {
       showProblem("No sched_ext schedulers are installed",
-                  "Install the scx-scheds package from scx-bundler, then open SCX Switcher "
-                  "again:",
-                  "github.com/hmwassim/scx-bundler/releases");
+                  "Install the scx-scheds package, then open SCX Switcher again:",
+                  "github.com/hmwassim/scx-scheds/releases");
       return;
    }
    showPage(m_switcher);

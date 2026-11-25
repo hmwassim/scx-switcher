@@ -5,13 +5,13 @@ schedulers on Debian 13. It shows which scheduler is running, starts, stops or s
 picks a mode for it, and lets you decide whether it starts at boot.
 
 It runs schedulers through `scx.service` and `/etc/default/scx`, which ship with the
-`scx-scheds` package from [scx-bundler](https://github.com/hmwassim/scx-bundler). It doesn't
+[scx-scheds](https://github.com/hmwassim/scx-scheds) package. It doesn't
 need scx_loader.
 
 ## Requirements
 
 - A kernel with `CONFIG_SCHED_CLASS_EXT` (Linux 6.12 or newer; Debian's own kernels have it)
-- `scx-scheds` from scx-bundler
+- [`scx-scheds`](https://github.com/hmwassim/scx-scheds)
 - polkit with `pkexec` and an authentication agent (every desktop session has one)
 
 ## Build
