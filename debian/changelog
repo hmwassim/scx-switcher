@@ -1,3 +1,9 @@
+scx-switcher (3.0.2-1) trixie; urgency=medium
+
+  * Point to scx-scheds' own repository, scx-bundler is archived.
+
+ -- hmwassim <hmwassim@tuta.io>  Wed, 25 Nov 2026 02:11:39 +0100
+
 scx-switcher (3.0.1-1) trixie; urgency=medium
 
   * Sync the scheduler list with scx 1.1.5: add scx_panda, scx_rburst,
