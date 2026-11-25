@@ -1,0 +1,49 @@
+name: release
+
+# Push a tag v<version> matching debian/changelog's upstream version (e.g. v3.0.2 for
+# 3.0.2-1): this builds the deb with build.sh and publishes it as the release of that tag.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the tag against debian/changelog
+        id: version
+        run: |
+          version="$(sed -n '1s/^[^ ]* (\([^)]*\)).*/\1/p' debian/changelog)"
+          if [ "$GITHUB_REF_NAME" != "v${version%-*}" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match debian/changelog version $version (expected v${version%-*})"
+            exit 1
+          fi
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+
+      - name: Build
+        run: ./build.sh
+
+      - name: Release notes
+        run: |
+          # The first changelog entry, "  * x" -> "- x", continuation lines indented
+          awk 'NR > 1 && /^ -- / { exit }
+               NR > 1 && /^  [*] / { sub(/^  [*] /, "- "); print; next }
+               NR > 1 && /^    / { sub(/^ +/, "  "); print }' debian/changelog >notes.md
+          cat notes.md
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          deb="out/scx-switcher_${VERSION}_amd64.deb"
+          test -f "$deb"
+          sha256sum "$deb"
+          gh release create "$GITHUB_REF_NAME" "$deb" \
+            --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
